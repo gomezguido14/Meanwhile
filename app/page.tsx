@@ -385,7 +385,7 @@ export default function Home() {
 
       <nav className="journal-nav">
         <button className={section === "cover" ? "active" : ""} onClick={() => setSection("cover")}>Portada</button>
-        <button className={section === "index" ? "active" : ""} onClick={() => setSection("index")}>Indice</button>
+        <button className={section === "index" ? "active" : ""} onClick={() => setSection("index")}>Índice</button>
         <button className={section === "topics" ? "active" : ""} onClick={() => setSection("topics")}>Temas</button>
         <button className={section === "archive" ? "active" : ""} onClick={() => setSection("archive")}>Archivo</button>
       </nav>
@@ -441,32 +441,43 @@ export default function Home() {
               const canEdit = selectedGroup?.id === family.id;
               const key = `${currentTopic.id}-${family.id}`;
               const draft = draftFor(contribution, key);
+              const imageSrc = draft.preview ?? contribution?.signed_url ?? "";
               return (
                 <article
                   key={family.id}
-                  className={`memory-card note-${draft.noteStyle} ${currentTopic.hero_group_id === family.id ? "hero" : ""}`}
+                  className={`memory-card note-${draft.noteStyle} ${currentTopic.hero_group_id === family.id ? "hero" : ""} ${canEdit ? "own" : ""}`}
                   style={{ ["--accent" as string]: family.color ?? "#c7a35c" }}
                 >
                   <div className="card-tape" />
-                  <div className="photo-frame">
-                    {draft.preview || contribution?.signed_url ? (
-                      <img src={draft.preview ?? contribution?.signed_url ?? ""} alt={`Foto de ${family.name}`} />
-                    ) : (
-                      <div className="empty-photo">
-                        <span>{canEdit ? "Subi tu foto aca" : "Este recuerdo espera una imagen"}</span>
-                      </div>
-                    )}
-                  </div>
+                  {canEdit ? (
+                    <label className="photo-frame photo-picker">
+                      {imageSrc ? (
+                        <img src={imageSrc} alt={`Foto de ${family.name}`} />
+                      ) : (
+                        <div className="empty-photo">
+                          <span>Tocá acá para subir tu foto</span>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" onChange={(event) => handleFileChange(key, event)} />
+                    </label>
+                  ) : (
+                    <div className="photo-frame">
+                      {imageSrc ? (
+                        <img src={imageSrc} alt={`Foto de ${family.name}`} />
+                      ) : (
+                        <div className="empty-photo">
+                          <span>Este recuerdo espera una imagen</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="slot-meta">
                     <strong>{family.name}</strong>
-                    {canEdit ? <span>Tu pagina</span> : <span>{currentIssue?.month} {currentIssue?.year}</span>}
+                    {canEdit ? <span>Tu página</span> : <span>{currentIssue?.month} {currentIssue?.year}</span>}
                   </div>
                   {canEdit ? (
                     <div className="editor-box">
-                      <label>
-                        Foto
-                        <input type="file" accept="image/*" onChange={(event) => handleFileChange(key, event)} />
-                      </label>
+                      <p className="upload-hint">{draft.file ? "Foto lista. Guardala para publicarla." : "Tocá el recuadro de arriba para subir o reemplazar la foto."}</p>
                       <input
                         value={draft.title}
                         maxLength={40}
