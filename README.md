@@ -1,42 +1,50 @@
-# Mientras Tanto - Demo pública
+# Mientras Tanto - Webapp
 
-Esta carpeta está preparada para subir a Vercel como demo estática.
+Esta carpeta está preparada para subir a Vercel como webapp Next.js conectada a Supabase.
 
 ## Qué contiene
 
-- `index.html`: prototipo visual y funcional local, sin backend.
-- `mt-cover.png`: imagen de portada.
-- `vercel.json`: configuración mínima para Vercel.
+- `app/`: webapp principal.
+- `lib/supabase.ts`: conexión pública a Supabase.
+- `public/mt-cover.png`: imagen de portada inicial.
+- `package.json`: dependencias de Next.js.
 
 ## Seguridad
 
-Esta demo no incluye contraseñas reales, tokens, claves de Supabase ni variables secretas.
+Esta webapp no incluye claves secretas en el código.
 
-Importante: no uses PINs reales en frontend. Cualquier dato dentro de `index.html` queda visible para quien abra la página.
+Usa solamente:
 
-## Deploy rápido en Vercel
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
 
-1. Creá un repo nuevo en GitHub, por ejemplo `mientras-tanto-demo`.
-2. Subí solamente el contenido de esta carpeta `vercel-demo`.
-3. Entrá a Vercel.
-4. Elegí `Add New Project`.
-5. Importá el repo.
-6. En framework, dejá `Other` o `Static`.
-7. Deploy.
+No subir nunca:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+sb_secret_...
+```
+
+Los PINs familiares viven hasheados en Supabase.
+
+## Deploy en Vercel
+
+1. Subí el contenido de esta carpeta al repo conectado con Vercel.
+2. Vercel debería detectar Next.js automáticamente.
+3. Verificá que estén cargadas las variables de entorno.
+4. Hacé Redeploy.
 
 Vercel te va a dar un link tipo:
 
-`https://mientras-tanto-demo.vercel.app`
+`https://meanwhile-iota.vercel.app`
 
-## ¿Hace falta Supabase?
+## Supabase
 
-Para esta demo pública, no.
+Esta versión sí usa Supabase:
 
-Para una versión real donde varias personas suban fotos desde distintos celulares, sí conviene usar Supabase:
-
-- Base de datos para grupos, meses, temas y contribuciones.
-- Storage para fotos.
-- Reglas de seguridad para que cada grupo edite solo lo suyo.
-- PIN validado del lado servidor, no dentro del frontend.
-
-No subas a Vercel una `SUPABASE_SERVICE_ROLE_KEY`. Esa clave nunca debe estar en el navegador.
+- lee grupos, temas y contribuciones;
+- valida PIN con una función segura;
+- sube fotos al bucket `journal-photos`;
+- guarda una contribución por grupo y tema.
