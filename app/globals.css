@@ -29,6 +29,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   color: var(--ink);
   background:
     radial-gradient(circle at 18% 12%, rgba(185, 104, 79, 0.10), transparent 24rem),
@@ -261,6 +262,14 @@ img {
   place-items: center;
   border: 1px solid rgba(41, 37, 33, 0.16);
   font-family: var(--serif);
+  overflow: hidden;
+}
+
+.family-choice img,
+.profile-chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .pin-form {
@@ -289,6 +298,7 @@ img {
 .journal-page {
   min-height: 100vh;
   padding-bottom: 54px;
+  overflow-x: hidden;
 }
 
 .journal-header {
@@ -316,12 +326,59 @@ img {
   gap: 10px;
   background: rgba(255, 250, 239, 0.55);
   padding: 8px 12px;
+  min-width: 0;
 }
 
 .profile-chip span {
   width: 46px;
   height: 46px;
   background: rgba(182, 195, 165, 0.46);
+}
+
+.profile-panel {
+  position: fixed;
+  top: 94px;
+  right: clamp(14px, 4vw, 54px);
+  z-index: 19;
+  width: min(330px, calc(100% - 28px));
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  background: rgba(255, 250, 239, 0.94);
+  border: 1px solid rgba(41, 37, 33, 0.14);
+  box-shadow: var(--shadow);
+}
+
+.profile-panel strong {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  font-weight: 500;
+}
+
+.profile-panel p {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+}
+
+.avatar-upload,
+.change-photo-pill {
+  width: fit-content;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(41, 37, 33, 0.16);
+  background: rgba(230, 219, 199, 0.72);
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.avatar-upload input,
+.change-photo-pill input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .journal-nav {
@@ -371,11 +428,57 @@ img {
   border: 1px solid rgba(41, 37, 33, 0.10);
 }
 
+.spread::before,
+.spread::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.spread::before {
+  width: 190px;
+  height: 118px;
+  right: 8%;
+  top: 11%;
+  opacity: 0.18;
+  background:
+    linear-gradient(90deg, rgba(41, 37, 33, 0.18) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(41, 37, 33, 0.12) 1px, transparent 1px),
+    rgba(214, 188, 146, 0.64);
+  background-size: 17px 17px;
+  clip-path: polygon(0 10%, 11% 0, 100% 4%, 96% 100%, 7% 93%);
+  transform: rotate(5deg);
+}
+
+.spread::after {
+  width: 170px;
+  height: 160px;
+  left: 6%;
+  bottom: 8%;
+  opacity: 0.12;
+  background:
+    radial-gradient(ellipse at 46% 72%, transparent 0 50%, rgba(120, 128, 91, 0.85) 51% 54%, transparent 55%),
+    radial-gradient(ellipse at 42% 40%, rgba(120, 128, 91, 0.85) 0 18%, transparent 19%),
+    radial-gradient(ellipse at 62% 36%, rgba(120, 128, 91, 0.55) 0 15%, transparent 16%),
+    linear-gradient(72deg, transparent 48%, rgba(120, 128, 91, 0.75) 49% 51%, transparent 52%);
+  transform: rotate(-14deg);
+}
+
 .journal-decor {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.56;
+  z-index: 0;
+  opacity: 0.28;
+}
+
+.issue-cover > :not(.journal-decor),
+.index-spread > :not(.journal-decor),
+.archive-spread > :not(.journal-decor),
+.topic-spread > :not(.journal-decor) {
+  position: relative;
+  z-index: 1;
 }
 
 .scrap {
@@ -639,10 +742,39 @@ img {
   aspect-ratio: 16 / 10;
 }
 
+.memory-card:nth-child(2n) .photo-frame {
+  aspect-ratio: 3 / 4;
+}
+
+.memory-card:nth-child(3n) .photo-frame {
+  aspect-ratio: 1 / 1;
+}
+
+.memory-card:nth-child(4n) .photo-frame {
+  aspect-ratio: 5 / 3;
+}
+
+.memory-card:nth-child(5n) .photo-frame {
+  aspect-ratio: 4 / 5;
+}
+
 .photo-frame img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.photo-zoom-button {
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.photo-zoom-button:active {
+  transform: scale(0.992);
 }
 
 .empty-photo {
@@ -737,6 +869,14 @@ img {
   font-size: 0.86rem;
 }
 
+.editor-box .change-photo-pill {
+  display: inline-grid;
+  place-items: center;
+  gap: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
 .editor-box textarea {
   min-height: 92px;
   resize: vertical;
@@ -778,6 +918,72 @@ img {
   padding: 22px;
 }
 
+.archive-copy {
+  max-width: 520px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.archive-issue.active {
+  background: rgba(185, 104, 79, 0.18);
+  border-color: rgba(185, 104, 79, 0.42);
+}
+
+.archive-issue.next-issue {
+  opacity: 0.74;
+  background:
+    linear-gradient(90deg, rgba(41, 37, 33, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(41, 37, 33, 0.05) 1px, transparent 1px),
+    rgba(230, 219, 199, 0.56);
+  background-size: 18px 18px;
+}
+
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  border: 0;
+  background: rgba(20, 18, 16, 0.74);
+  backdrop-filter: blur(12px);
+}
+
+.lightbox-card {
+  width: min(900px, 100%);
+  max-height: 88vh;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(255, 250, 239, 0.92);
+  box-shadow: var(--shadow);
+  transform: rotate(-0.6deg);
+}
+
+.lightbox-card img {
+  width: 100%;
+  max-height: 74vh;
+  object-fit: contain;
+  background: rgba(41, 37, 33, 0.08);
+}
+
+.lightbox-card > span {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.lightbox-card strong {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+}
+
+.lightbox-card em {
+  color: var(--ink-soft);
+  font-style: normal;
+}
+
 @media (max-width: 900px) {
   .cover-book,
   .issue-cover,
@@ -804,6 +1010,10 @@ img {
 }
 
 @media (max-width: 620px) {
+  body {
+    background-size: auto, auto, 34px 34px, 34px 34px, auto;
+  }
+
   .cover-page,
   .login-page {
     padding: 0;
@@ -823,17 +1033,28 @@ img {
 
   .family-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .family-choice {
+    min-height: 112px;
+    padding: 12px 8px;
+  }
+
+  .family-choice span {
+    width: 54px;
+    height: 54px;
   }
 
   .journal-header {
     position: static;
     align-items: center;
-    padding: 12px 16px;
+    padding: 12px 14px 10px;
     gap: 10px;
   }
 
   .journal-header h1 {
-    font-size: 2.25rem;
+    font-size: 2.05rem;
   }
 
   .journal-header .eyebrow {
@@ -841,9 +1062,11 @@ img {
   }
 
   .profile-chip {
-    max-width: 118px;
+    max-width: 132px;
     font-size: 0.85rem;
     padding: 7px 8px;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   .profile-chip span {
@@ -857,7 +1080,9 @@ img {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
-    padding: 0 8px 8px;
+    width: calc(100% - 16px);
+    margin: 0 auto;
+    padding: 0 0 8px;
     overflow: visible;
   }
 
@@ -868,32 +1093,63 @@ img {
   }
 
   .spread {
-    width: calc(100% - 14px);
+    width: calc(100% - 12px);
     min-height: auto;
     margin-top: 12px;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .spread::before {
+    width: 120px;
+    height: 78px;
+    right: -12px;
+    top: 16px;
+    opacity: 0.12;
+  }
+
+  .spread::after {
+    width: 104px;
+    height: 104px;
+    left: 3%;
+    bottom: 18%;
+    opacity: 0.08;
+  }
+
+  .journal-decor {
+    opacity: 0.10;
+  }
+
+  .issue-cover .journal-decor,
+  .index-spread .journal-decor,
+  .archive-spread .journal-decor {
+    opacity: 0.055;
   }
 
   .issue-cover,
   .index-spread,
   .archive-spread {
-    padding: 28px 20px;
+    padding: 30px 20px 34px;
     gap: 22px;
+    align-items: start;
   }
 
   .issue-cover h2,
   .index-spread h2,
   .archive-spread h2 {
-    font-size: 2.7rem;
-    line-height: 0.98;
+    font-size: clamp(2.15rem, 14vw, 3rem);
+    line-height: 1;
+    overflow-wrap: anywhere;
   }
 
   .issue-cover p {
-    font-size: 1.05rem;
+    font-size: 1rem;
     line-height: 1.55;
   }
 
   .issue-cover img {
     border-width: 9px;
+    aspect-ratio: 4 / 4.6;
     transform: rotate(1deg);
   }
 
@@ -922,9 +1178,13 @@ img {
     border-bottom: 1px solid rgba(41, 37, 33, 0.10);
   }
 
+  .topic-intro p:not(.tape-label) {
+    font-size: 1.08rem;
+  }
+
   .cutout-title {
     margin: 24px 0 18px;
-    font-size: 2.35rem;
+    font-size: clamp(2rem, 12vw, 2.75rem);
   }
 
   .memory-collage {
@@ -986,6 +1246,27 @@ img {
     --mobile-turn: -0.5deg;
   }
 
+  .memory-card:nth-child(2n) .photo-frame {
+    aspect-ratio: 3 / 4.1;
+  }
+
+  .memory-card:nth-child(3n) .photo-frame {
+    aspect-ratio: 1 / 1;
+  }
+
+  .memory-card:nth-child(4n) .photo-frame {
+    aspect-ratio: 5 / 3.2;
+  }
+
+  .memory-card:nth-child(5n) .photo-frame {
+    aspect-ratio: 4 / 4.8;
+  }
+
+  .memory-card.hero .photo-frame,
+  .memory-card.own .photo-frame {
+    aspect-ratio: 4 / 3.35;
+  }
+
   .photo-picker::after {
     content: "Tocar foto";
     font-size: 0.9rem;
@@ -1007,5 +1288,28 @@ img {
 
   .archive-list {
     grid-template-columns: 1fr;
+  }
+
+  .profile-panel {
+    position: fixed;
+    top: auto;
+    right: 10px;
+    left: 10px;
+    bottom: 12px;
+    width: auto;
+    z-index: 30;
+  }
+
+  .photo-lightbox {
+    padding: 12px;
+  }
+
+  .lightbox-card {
+    max-height: 84vh;
+    padding: 10px;
+  }
+
+  .lightbox-card img {
+    max-height: 68vh;
   }
 }

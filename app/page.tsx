@@ -8,6 +8,7 @@ type FamilyGroup = {
   name: string;
   slug: string;
   avatar_url: string | null;
+  avatar_signed_url?: string | null;
   color: string | null;
   icon: string | null;
   sort_order: number;
@@ -90,14 +91,17 @@ export default function Home() {
   const [savedPin, setSavedPin] = useState("");
   const [loginError, setLoginError] = useState("");
   const [topicIndex, setTopicIndex] = useState(0);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [screen, setScreen] = useState<"cover" | "login" | "journal">("cover");
   const [section, setSection] = useState<"cover" | "index" | "topics" | "archive">("topics");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busySlot, setBusySlot] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [zoomedPhoto, setZoomedPhoto] = useState<{ src: string; title: string; caption?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
 
-  const currentIssue = issues[0] ?? null;
+  const currentIssue = issues.find((issue) => issue.id === selectedIssueId) ?? issues[0] ?? null;
   const currentTopic = topics[topicIndex] ?? null;
 
   useEffect(() => {
@@ -126,9 +130,11 @@ export default function Home() {
     }
 
     const loadedIssues = (issuesResult.data ?? []) as MonthlyIssue[];
-    const issue = loadedIssues[0];
-    setFamilies((familiesResult.data ?? []) as FamilyGroup[]);
+    const loadedFamilies = await signFamilyAvatars((familiesResult.data ?? []) as FamilyGroup[]);
+    const issue = loadedIssues.find((item) => item.id === selectedIssueId) ?? loadedIssues[0];
+    setFamilies(loadedFamilies);
     setIssues(loadedIssues);
+    setSelectedIssueId(issue?.id ?? null);
 
     if (!issue) {
       setLoading(false);
@@ -136,14 +142,20 @@ export default function Home() {
       return;
     }
 
+    await loadIssueContent(issue.id);
+    setLoading(false);
+  }
+
+  async function loadIssueContent(issueId: string) {
+    if (!supabase) return;
+
     const [topicsResult, contributionsResult] = await Promise.all([
-      supabase.from("topics").select("*").eq("monthly_issue_id", issue.id).order("order_index"),
-      supabase.from("contributions").select("*").eq("monthly_issue_id", issue.id)
+      supabase.from("topics").select("*").eq("monthly_issue_id", issueId).order("order_index"),
+      supabase.from("contributions").select("*").eq("monthly_issue_id", issueId)
     ]);
 
     if (topicsResult.error || contributionsResult.error) {
       setStatus(topicsResult.error?.message || contributionsResult.error?.message || "No pude cargar los temas.");
-      setLoading(false);
       return;
     }
 
@@ -152,7 +164,21 @@ export default function Home() {
 
     setTopics((topicsResult.data ?? []) as Topic[]);
     setContributions(withSignedUrls);
-    setLoading(false);
+    setTopicIndex(0);
+  }
+
+  async function signFamilyAvatars(items: FamilyGroup[]) {
+    if (!supabase) return items;
+    const client = supabase;
+
+    return Promise.all(
+      items.map(async (item) => {
+        if (!item.avatar_url) return { ...item, avatar_signed_url: null };
+        if (item.avatar_url.startsWith("http")) return { ...item, avatar_signed_url: item.avatar_url };
+        const { data } = await client.storage.from("journal-photos").createSignedUrl(item.avatar_url, 60 * 60);
+        return { ...item, avatar_signed_url: data?.signedUrl ?? null };
+      })
+    );
   }
 
   async function signContributionImages(items: Contribution[]) {
@@ -191,6 +217,7 @@ export default function Home() {
     localStorage.setItem("mt-family-slug", verifiedGroup.slug);
     setScreen("journal");
     setSection("topics");
+    setProfileOpen(false);
   }
 
   function pickGroup(group: FamilyGroup) {
@@ -236,6 +263,39 @@ export default function Home() {
       file: compressed,
       preview: URL.createObjectURL(compressed)
     });
+  }
+
+  async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    if (!file || !supabase || !selectedGroup || !savedPin) return;
+
+    setStatus("");
+    const compressed = await compressImage(file);
+    const avatarPath = `avatars/${selectedGroup.id}.jpg`;
+
+    const { error: uploadError } = await supabase.storage.from("journal-photos").upload(avatarPath, compressed, {
+      upsert: true,
+      contentType: "image/jpeg"
+    });
+
+    if (uploadError) {
+      setStatus(uploadError.message);
+      return;
+    }
+
+    const { error } = await supabase.rpc("save_family_avatar", {
+      group_slug: selectedGroup.slug,
+      pin: savedPin,
+      new_avatar_url: avatarPath
+    });
+
+    if (error) {
+      setStatus(error.message);
+      return;
+    }
+
+    await loadJournal();
+    setStatus("Foto de perfil actualizada.");
   }
 
   async function saveSlot(topic: Topic, group: FamilyGroup, contribution: Contribution | null) {
@@ -304,6 +364,10 @@ export default function Home() {
     }));
   }, [families, contributions, currentTopic]);
 
+  const selectedGroupWithAvatar = selectedGroup
+    ? families.find((family) => family.id === selectedGroup.id) ?? selectedGroup
+    : null;
+
   if (screen === "cover") {
     return (
       <main className="cover-page">
@@ -322,7 +386,7 @@ export default function Home() {
             </div>
             <div className="cover-actions">
               <button className="ink-button" onClick={() => setScreen("login")}>Entrar</button>
-              <button className="paper-button" onClick={() => setScreen("login")}>Junio 2026</button>
+              <button className="paper-button" onClick={() => setScreen("login")}>Abrir número</button>
             </div>
           </div>
           <div className="cover-image">
@@ -345,7 +409,9 @@ export default function Home() {
           <div className="family-picker">
             {families.map((group) => (
               <button key={group.id} className="family-choice" onClick={() => pickGroup(group)}>
-                <span style={{ background: group.color ?? "#d8c89f" }}>{initials(group.name)}</span>
+                <span style={{ background: group.color ?? "#d8c89f" }}>
+                  {group.avatar_signed_url ? <img src={group.avatar_signed_url} alt={group.name} /> : initials(group.name)}
+                </span>
                 <strong>{group.name}</strong>
               </button>
             ))}
@@ -377,11 +443,31 @@ export default function Home() {
           <p className="eyebrow">Num. {String(currentIssue?.issue_number ?? 1).padStart(2, "0")} - {currentIssue?.title ?? "Junio 2026"}</p>
           <h1>Mientras <span>Tanto</span></h1>
         </div>
-        <button className="profile-chip" onClick={() => setScreen("login")}>
-          <span>{selectedGroup ? initials(selectedGroup.name) : "MT"}</span>
-          {selectedGroup?.name ?? "Cambiar familia"}
+        <button className="profile-chip" onClick={() => setProfileOpen((open) => !open)}>
+          <span>
+            {selectedGroupWithAvatar?.avatar_signed_url ? (
+              <img src={selectedGroupWithAvatar.avatar_signed_url} alt={selectedGroupWithAvatar.name} />
+            ) : (
+              selectedGroup ? initials(selectedGroup.name) : "MT"
+            )}
+          </span>
+          {selectedGroup?.name ?? "Perfil"}
         </button>
       </header>
+
+      {profileOpen && selectedGroup ? (
+        <section className="profile-panel">
+          <div>
+            <strong>{selectedGroup.name}</strong>
+            <p>Tu espacio familiar en la revista.</p>
+          </div>
+          <label className="avatar-upload">
+            Cambiar foto de login
+            <input type="file" accept="image/*" onChange={handleAvatarChange} />
+          </label>
+          <button className="paper-button" onClick={() => setScreen("login")}>Cambiar familia</button>
+        </section>
+      ) : null}
 
       <nav className="journal-nav">
         <button className={section === "cover" ? "active" : ""} onClick={() => setSection("cover")}>Portada</button>
@@ -449,21 +535,23 @@ export default function Home() {
                   style={{ ["--accent" as string]: family.color ?? "#c7a35c" }}
                 >
                   <div className="card-tape" />
-                  {canEdit ? (
+                  {canEdit && !imageSrc ? (
                     <label className="photo-frame photo-picker">
-                      {imageSrc ? (
-                        <img src={imageSrc} alt={`Foto de ${family.name}`} />
-                      ) : (
-                        <div className="empty-photo">
-                          <span>Tocá acá para subir tu foto</span>
-                        </div>
-                      )}
+                      <div className="empty-photo">
+                        <span>Tocá acá para subir tu foto</span>
+                      </div>
                       <input type="file" accept="image/*" onChange={(event) => handleFileChange(key, event)} />
                     </label>
                   ) : (
                     <div className="photo-frame">
                       {imageSrc ? (
-                        <img src={imageSrc} alt={`Foto de ${family.name}`} />
+                        <button
+                          type="button"
+                          className="photo-zoom-button"
+                          onClick={() => setZoomedPhoto({ src: imageSrc, title: family.name, caption: contribution?.caption })}
+                        >
+                          <img src={imageSrc} alt={`Foto de ${family.name}`} />
+                        </button>
                       ) : (
                         <div className="empty-photo">
                           <span>Este recuerdo espera una imagen</span>
@@ -477,7 +565,13 @@ export default function Home() {
                   </div>
                   {canEdit ? (
                     <div className="editor-box">
-                      <p className="upload-hint">{draft.file ? "Foto lista. Guardala para publicarla." : "Tocá el recuadro de arriba para subir o reemplazar la foto."}</p>
+                      {imageSrc ? (
+                        <label className="change-photo-pill">
+                          Cambiar foto
+                          <input type="file" accept="image/*" onChange={(event) => handleFileChange(key, event)} />
+                        </label>
+                      ) : null}
+                      <p className="upload-hint">{draft.file ? "Foto lista. Guardala para publicarla." : imageSrc ? "Tocá la foto para verla grande, o cambiala desde acá." : "Tocá el recuadro de arriba para subir la foto."}</p>
                       <input
                         value={draft.title}
                         maxLength={40}
@@ -529,18 +623,46 @@ export default function Home() {
         <section className="archive-spread spread">
           <JournalDecor />
           <h2>Archivo</h2>
+          <p className="archive-copy">
+            Acá elegís qué número leer. Cuando creemos Julio, Agosto y los próximos meses,
+            van a aparecer en esta mesa como revistas guardadas.
+          </p>
           <div className="archive-list">
             {issues.map((issue) => (
-              <button key={issue.id} className="archive-issue">
+              <button
+                key={issue.id}
+                className={`archive-issue ${currentIssue?.id === issue.id ? "active" : ""}`}
+                onClick={async () => {
+                  setSelectedIssueId(issue.id);
+                  await loadIssueContent(issue.id);
+                  setSection("cover");
+                }}
+              >
                 <span>{issue.month} {issue.year}</span>
                 <small>Numero {String(issue.issue_number).padStart(2, "0")}</small>
               </button>
             ))}
+            <div className="archive-issue next-issue">
+              <span>Julio 2026</span>
+              <small>Próximo número</small>
+            </div>
           </div>
           <p className="paper-note">
-            Julio lo vamos a sumar con una pantalla de editor: elegir portada, intro y temas nuevos.
+            El archivo no es una galería: es la biblioteca mensual de la familia.
           </p>
         </section>
+      ) : null}
+
+      {zoomedPhoto ? (
+        <button className="photo-lightbox" onClick={() => setZoomedPhoto(null)}>
+          <span className="lightbox-card">
+            <img src={zoomedPhoto.src} alt={zoomedPhoto.title} />
+            <span>
+              <strong>{zoomedPhoto.title}</strong>
+              {zoomedPhoto.caption ? <em>{zoomedPhoto.caption}</em> : null}
+            </span>
+          </span>
+        </button>
       ) : null}
     </main>
   );
