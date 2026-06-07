@@ -322,7 +322,7 @@ export default function Home() {
             </div>
             <div className="cover-actions">
               <button className="ink-button" onClick={() => setScreen("login")}>Entrar</button>
-              <button className="paper-button" onClick={() => setSection("index")}>Junio 2026</button>
+              <button className="paper-button" onClick={() => setScreen("login")}>Junio 2026</button>
             </div>
           </div>
           <div className="cover-image">
