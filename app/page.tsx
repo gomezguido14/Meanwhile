@@ -64,6 +64,16 @@ type Draft = {
   preview: string | null;
 };
 
+type StoredDraft = Omit<Draft, "file" | "preview">;
+
+type CreatedIssue = {
+  issue_id: string;
+  issue_slug: string;
+  issue_title: string;
+};
+
+const draftStorageKey = "mt-drafts-v1";
+
 const noteStyles: Array<{ value: Contribution["note_style"]; label: string }> = [
   { value: "classic", label: "Editorial" },
   { value: "handwritten", label: "A mano" },
@@ -96,6 +106,7 @@ export default function Home() {
   const [section, setSection] = useState<"cover" | "index" | "topics" | "archive">("cover");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busySlot, setBusySlot] = useState<string | null>(null);
+  const [adminBusy, setAdminBusy] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<{ topic: Topic; group: FamilyGroup; contribution: Contribution | null } | null>(null);
   const [zoomedPhoto, setZoomedPhoto] = useState<{ src: string; title: string; caption?: string | null } | null>(null);
@@ -104,12 +115,20 @@ export default function Home() {
 
   const currentIssue = issues.find((issue) => issue.id === selectedIssueId) ?? issues[0] ?? null;
   const currentTopic = topics[topicIndex] ?? null;
+  const canManageIssues = Boolean(selectedGroup?.can_manage_issues);
 
   useEffect(() => {
     void loadJournal();
   }, []);
 
-  async function loadJournal() {
+  useEffect(() => {
+    setDrafts((current) => ({
+      ...loadStoredDrafts(),
+      ...current
+    }));
+  }, []);
+
+  async function loadJournal(preferredIssueId = selectedIssueId) {
     setLoading(true);
     setStatus("");
 
@@ -132,7 +151,7 @@ export default function Home() {
 
     const loadedIssues = (issuesResult.data ?? []) as MonthlyIssue[];
     const loadedFamilies = await signFamilyAvatars((familiesResult.data ?? []) as FamilyGroup[]);
-    const issue = loadedIssues.find((item) => item.id === selectedIssueId) ?? loadedIssues[0];
+    const issue = loadedIssues.find((item) => item.id === preferredIssueId) ?? loadedIssues[0];
     setFamilies(loadedFamilies);
     setIssues(loadedIssues);
     setSelectedIssueId(issue?.id ?? null);
@@ -245,17 +264,25 @@ export default function Home() {
     );
   }
 
-  function updateDraft(key: string, patch: Partial<Draft>) {
-    setDrafts((current) => ({
-      ...current,
-      [key]: {
-        ...(current[key] ?? emptyDraft),
-        ...patch
-      }
-    }));
+  function openEditor(topic: Topic, group: FamilyGroup, contribution: Contribution | null) {
+    setEditingSlot({ topic, group, contribution });
   }
 
-  async function handleFileChange(key: string, event: ChangeEvent<HTMLInputElement>) {
+  function updateDraft(key: string, patch: Partial<Draft>, baseDraft = emptyDraft) {
+    setDrafts((current) => {
+      const next = {
+        ...current,
+        [key]: {
+          ...(current[key] ?? baseDraft),
+          ...patch
+        }
+      };
+      saveStoredDrafts(next);
+      return next;
+    });
+  }
+
+  async function handleFileChange(key: string, event: ChangeEvent<HTMLInputElement>, baseDraft = emptyDraft) {
     const file = event.target.files?.[0] ?? null;
     if (!file) return;
 
@@ -263,7 +290,7 @@ export default function Home() {
     updateDraft(key, {
       file: compressed,
       preview: URL.createObjectURL(compressed)
-    });
+    }, baseDraft);
   }
 
   async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
@@ -348,6 +375,7 @@ export default function Home() {
     setDrafts((current) => {
       const next = { ...current };
       delete next[key];
+      saveStoredDrafts(next);
       return next;
     });
 
@@ -355,6 +383,34 @@ export default function Home() {
     setBusySlot(null);
     setEditingSlot(null);
     setStatus("Guardado. La pagina ya se actualizo para todos.");
+  }
+
+  async function createNextIssue() {
+    if (!supabase || !selectedGroup || !savedPin) return;
+
+    setAdminBusy(true);
+    setStatus("");
+
+    const { data, error } = await supabase.rpc("create_next_month_issue", {
+      group_slug: selectedGroup.slug,
+      pin: savedPin
+    });
+
+    if (error) {
+      setStatus(error.message);
+      setAdminBusy(false);
+      return;
+    }
+
+    const createdIssue = (data?.[0] ?? null) as CreatedIssue | null;
+    if (createdIssue) {
+      setSelectedIssueId(createdIssue.issue_id);
+      await loadJournal(createdIssue.issue_id);
+      setSection("cover");
+      setStatus(`${createdIssue.issue_title} ya esta preparado con temas base.`);
+    }
+
+    setAdminBusy(false);
   }
 
   const currentContributions = useMemo(() => {
@@ -555,7 +611,7 @@ export default function Home() {
                   key={family.id}
                   className={`collage-slot slot-${index + 1} note-${draft.noteStyle} ${canEdit ? "own" : ""}`}
                   style={{ ["--accent" as string]: family.color ?? "#c7a35c" }}
-                  onClick={canEdit ? () => setEditingSlot({ topic: currentTopic, group: family, contribution: contribution ?? null }) : undefined}
+                  onClick={canEdit ? () => openEditor(currentTopic, family, contribution ?? null) : undefined}
                 >
                   {index % 3 === 0 && <div className="card-tape" />}
                   <div className="slot-photo-frame">
@@ -609,10 +665,22 @@ export default function Home() {
               </button>
             ))}
             <div className="archive-issue next-issue">
-              <span>Julio 2026</span>
+              <span>{nextIssueLabel(currentIssue)}</span>
               <small>Próximo número</small>
             </div>
           </div>
+          {canManageIssues ? (
+            <div className="admin-panel">
+              <p className="eyebrow">Admin</p>
+              <h3>Preparar el proximo numero</h3>
+              <p>
+                Crea el mes siguiente como borrador y carga cinco temas base para que la familia empiece a completar.
+              </p>
+              <button className="ink-button" onClick={createNextIssue} disabled={adminBusy}>
+                {adminBusy ? "Preparando..." : "Crear proximo mes"}
+              </button>
+            </div>
+          ) : null}
           <p className="paper-note">
             El archivo no es una galería: es la biblioteca mensual de la familia.
           </p>
@@ -643,33 +711,33 @@ export default function Home() {
                   <img src={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).preview ?? editingSlot.contribution?.signed_url ?? ""} alt="Preview" />
                   <label className="paper-button">
                     Cambiar foto
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(`${editingSlot.topic.id}-${editingSlot.group.id}`, e)} />
-                  </label>
-                </div>
-              ) : (
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(`${editingSlot.topic.id}-${editingSlot.group.id}`, e, draftFromContribution(editingSlot.contribution))} />
+                </label>
+              </div>
+            ) : (
                 <label className="photo-picker-large">
                   <div className="empty-photo">
                     <span>Tocá acá para subir tu foto</span>
                   </div>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(`${editingSlot.topic.id}-${editingSlot.group.id}`, e)} />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(`${editingSlot.topic.id}-${editingSlot.group.id}`, e, draftFromContribution(editingSlot.contribution))} />
                 </label>
               )}
               <input
                 value={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).title}
                 maxLength={40}
-                onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { title: event.target.value })}
+                onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { title: event.target.value }, draftFromContribution(editingSlot.contribution))}
                 placeholder="Título corto (opcional)"
               />
               <textarea
                 value={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).caption}
                 maxLength={200}
-                onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { caption: event.target.value })}
+                onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { caption: event.target.value }, draftFromContribution(editingSlot.contribution))}
                 placeholder="Escribe un breve recuerdo..."
               />
               <div className="format-row">
                 <select
                   value={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).noteStyle}
-                  onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { noteStyle: event.target.value as Draft["noteStyle"] })}
+                  onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { noteStyle: event.target.value as Draft["noteStyle"] }, draftFromContribution(editingSlot.contribution))}
                 >
                   {noteStyles.map((style) => (
                     <option key={style.value} value={style.value}>{style.label}</option>
@@ -678,7 +746,7 @@ export default function Home() {
                 <button
                   type="button"
                   className={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).isBold ? "bold-toggle active" : "bold-toggle"}
-                  onClick={() => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { isBold: !draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).isBold })}
+                  onClick={() => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { isBold: !draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).isBold }, draftFromContribution(editingSlot.contribution))}
                 >
                   B
                 </button>
@@ -712,6 +780,67 @@ function signedCover(issue: MonthlyIssue) {
   return issue.cover_image_url || null;
 }
 
+function nextIssueLabel(issue: MonthlyIssue | null) {
+  if (!issue) return "Próximo número";
+
+  const monthNumber = monthNameToNumber(issue.month);
+  const nextMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
+  const nextYear = monthNumber === 12 ? issue.year + 1 : issue.year;
+
+  return `${monthNumberToName(nextMonthNumber)} ${nextYear}`;
+}
+
+function monthNameToNumber(month: string) {
+  switch (month.toLowerCase()) {
+    case "enero":
+      return 1;
+    case "febrero":
+      return 2;
+    case "marzo":
+      return 3;
+    case "abril":
+      return 4;
+    case "mayo":
+      return 5;
+    case "junio":
+      return 6;
+    case "julio":
+      return 7;
+    case "agosto":
+      return 8;
+    case "septiembre":
+    case "setiembre":
+      return 9;
+    case "octubre":
+      return 10;
+    case "noviembre":
+      return 11;
+    case "diciembre":
+      return 12;
+    default:
+      return new Date().getMonth() + 1;
+  }
+}
+
+function monthNumberToName(month: number) {
+  const months = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre"
+  ];
+
+  return months[month - 1] ?? "Próximo número";
+}
+
 function CutoutTitle({ title }: { title: string }) {
   return (
     <h2 className="cutout-title">
@@ -739,6 +868,71 @@ function JournalDecor() {
       </div>
     </div>
   );
+}
+
+function draftFromContribution(contribution: Contribution | null): Draft {
+  return {
+    title: contribution?.title ?? "",
+    caption: contribution?.caption ?? "",
+    noteStyle: contribution?.note_style ?? "classic",
+    isBold: contribution?.is_bold ?? false,
+    file: null,
+    preview: null
+  };
+}
+
+function loadStoredDrafts(): Record<string, Draft> {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const rawDrafts = window.localStorage.getItem(draftStorageKey);
+    if (!rawDrafts) return {};
+    const parsed = JSON.parse(rawDrafts) as Record<string, StoredDraft>;
+
+    return Object.fromEntries(
+      Object.entries(parsed).map(([key, draft]) => [
+        key,
+        {
+          title: draft.title ?? "",
+          caption: draft.caption ?? "",
+          noteStyle: draft.noteStyle ?? "classic",
+          isBold: Boolean(draft.isBold),
+          file: null,
+          preview: null
+        }
+      ])
+    );
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredDrafts(drafts: Record<string, Draft>) {
+  if (typeof window === "undefined") return;
+
+  const stored = Object.fromEntries(
+    Object.entries(drafts)
+      .filter(([, draft]) => draft.title.trim() || draft.caption.trim() || draft.noteStyle !== "classic" || draft.isBold)
+      .map(([key, draft]) => [
+        key,
+        {
+          title: draft.title,
+          caption: draft.caption,
+          noteStyle: draft.noteStyle,
+          isBold: draft.isBold
+        } satisfies StoredDraft
+      ])
+  );
+
+  try {
+    if (Object.keys(stored).length === 0) {
+      window.localStorage.removeItem(draftStorageKey);
+      return;
+    }
+    window.localStorage.setItem(draftStorageKey, JSON.stringify(stored));
+  } catch {
+    // If storage is unavailable, in-memory drafts still keep the editing flow usable.
+  }
 }
 
 async function compressImage(file: File): Promise<File> {

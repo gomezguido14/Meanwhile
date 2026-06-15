@@ -1026,6 +1026,28 @@ img {
   background-size: 18px 18px;
 }
 
+.admin-panel {
+  display: grid;
+  gap: 12px;
+  max-width: 520px;
+  padding: 20px;
+  background: rgba(255, 250, 239, 0.72);
+  border: 1px solid rgba(41, 37, 33, 0.12);
+}
+
+.admin-panel h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 500;
+}
+
+.admin-panel p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
 .photo-lightbox {
   position: fixed;
   inset: 0;

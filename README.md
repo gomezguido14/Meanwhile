@@ -48,3 +48,9 @@ Esta versión sí usa Supabase:
 - valida PIN con una función segura;
 - sube fotos al bucket `journal-photos`;
 - guarda una contribución por grupo y tema.
+- permite preparar el próximo número mensual desde la app si el grupo tiene permisos admin.
+
+Además del seed demo, ejecutar estas funciones en el SQL Editor cuando corresponda:
+
+- `supabase-save-family-avatar.sql`
+- `supabase-create-next-issue.sql`
