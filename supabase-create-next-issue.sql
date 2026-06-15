@@ -1,8 +1,10 @@
 drop function if exists public.create_next_month_issue(text, text);
+drop function if exists public.create_next_month_issue(text, text, jsonb);
 
 create or replace function public.create_next_month_issue(
   group_slug text,
-  pin text
+  pin text,
+  custom_topics jsonb default null
 )
 returns table (
   issue_id uuid,
@@ -51,6 +53,30 @@ begin
   limit 1;
 
   if draft_issue.id is not null then
+    if custom_topics is not null
+      and jsonb_typeof(custom_topics) = 'array'
+      and jsonb_array_length(custom_topics) > 0
+      and not exists (
+        select 1
+        from public.contributions
+        where monthly_issue_id = draft_issue.id
+      ) then
+      delete from public.topics
+      where monthly_issue_id = draft_issue.id;
+
+      insert into public.topics (id, monthly_issue_id, title, description, order_index, layout_type)
+      select
+        gen_random_uuid(),
+        draft_issue.id,
+        left(nullif(trim(topic->>'title'), ''), 90),
+        nullif(left(trim(coalesce(topic->>'description', '')), 220), ''),
+        position::int,
+        (array['hero', 'polaroid', 'notebook'])[((position::int - 1) % 3) + 1]
+      from jsonb_array_elements(custom_topics) with ordinality as items(topic, position)
+      where nullif(trim(topic->>'title'), '') is not null
+      limit 8;
+    end if;
+
     issue_id := draft_issue.id;
     issue_slug := draft_issue.slug;
     issue_title := draft_issue.title;
@@ -125,13 +151,29 @@ begin
   )
   returning id, slug, title into issue_id, issue_slug, issue_title;
 
-  insert into public.topics (id, monthly_issue_id, title, description, order_index, layout_type)
-  values
-    (gen_random_uuid(), issue_id, 'Una escena de este mes', 'Una foto simple de algo que quieras guardar de estos dias.', 1, 'hero'),
-    (gen_random_uuid(), issue_id, 'Algo que comimos', 'Una comida, cafe, merienda o mesa compartida que haya valido la pena.', 2, 'polaroid'),
-    (gen_random_uuid(), issue_id, 'Un lugar donde estuve', 'Una esquina, casa, camino o rincon que cuente algo del mes.', 3, 'notebook'),
-    (gen_random_uuid(), issue_id, 'Algo que me hizo pensar en ustedes', 'Una imagen que te haya conectado con la familia, aunque sea por un segundo.', 4, 'hero'),
-    (gen_random_uuid(), issue_id, 'Pequena alegria', 'Una cosa minima que te alegro el dia.', 5, 'polaroid');
+  if custom_topics is not null
+    and jsonb_typeof(custom_topics) = 'array'
+    and jsonb_array_length(custom_topics) > 0 then
+    insert into public.topics (id, monthly_issue_id, title, description, order_index, layout_type)
+    select
+      gen_random_uuid(),
+      issue_id,
+      left(nullif(trim(topic->>'title'), ''), 90),
+      nullif(left(trim(coalesce(topic->>'description', '')), 220), ''),
+      position::int,
+      (array['hero', 'polaroid', 'notebook'])[((position::int - 1) % 3) + 1]
+    from jsonb_array_elements(custom_topics) with ordinality as items(topic, position)
+    where nullif(trim(topic->>'title'), '') is not null
+    limit 8;
+  else
+    insert into public.topics (id, monthly_issue_id, title, description, order_index, layout_type)
+    values
+      (gen_random_uuid(), issue_id, 'Una escena de este mes', 'Una foto simple de algo que quieras guardar de estos dias.', 1, 'hero'),
+      (gen_random_uuid(), issue_id, 'Algo que comimos', 'Una comida, cafe, merienda o mesa compartida que haya valido la pena.', 2, 'polaroid'),
+      (gen_random_uuid(), issue_id, 'Un lugar donde estuve', 'Una esquina, casa, camino o rincon que cuente algo del mes.', 3, 'notebook'),
+      (gen_random_uuid(), issue_id, 'Algo que me hizo pensar en ustedes', 'Una imagen que te haya conectado con la familia, aunque sea por un segundo.', 4, 'hero'),
+      (gen_random_uuid(), issue_id, 'Pequena alegria', 'Una cosa minima que te alegro el dia.', 5, 'polaroid');
+  end if;
 
   update public.monthly_issues
   set status = 'archived'
@@ -142,4 +184,4 @@ begin
 end;
 $$;
 
-grant execute on function public.create_next_month_issue(text, text) to anon, authenticated;
+grant execute on function public.create_next_month_issue(text, text, jsonb) to anon, authenticated;

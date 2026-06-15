@@ -1048,6 +1048,18 @@ img {
   line-height: 1.6;
 }
 
+.admin-panel textarea {
+  width: 100%;
+  min-height: 170px;
+  resize: vertical;
+  border: 1px solid rgba(41, 37, 33, 0.16);
+  background: rgba(255, 250, 239, 0.72);
+  color: var(--ink);
+  padding: 12px;
+  border-radius: 4px;
+  line-height: 1.45;
+}
+
 .photo-lightbox {
   position: fixed;
   inset: 0;

@@ -74,6 +74,14 @@ type CreatedIssue = {
 
 const draftStorageKey = "mt-drafts-v1";
 
+const defaultAdminTopics = [
+  "Una escena de este mes - Una foto simple de algo que quieras guardar de estos dias.",
+  "Algo que comimos - Una comida, cafe, merienda o mesa compartida que haya valido la pena.",
+  "Un lugar donde estuve - Una esquina, casa, camino o rincon que cuente algo del mes.",
+  "Algo que me hizo pensar en ustedes - Una imagen que te haya conectado con la familia, aunque sea por un segundo.",
+  "Pequena alegria - Una cosa minima que te alegro el dia."
+].join("\n");
+
 const noteStyles: Array<{ value: Contribution["note_style"]; label: string }> = [
   { value: "classic", label: "Editorial" },
   { value: "handwritten", label: "A mano" },
@@ -107,6 +115,7 @@ export default function Home() {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busySlot, setBusySlot] = useState<string | null>(null);
   const [adminBusy, setAdminBusy] = useState(false);
+  const [adminTopics, setAdminTopics] = useState(defaultAdminTopics);
   const [profileOpen, setProfileOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<{ topic: Topic; group: FamilyGroup; contribution: Contribution | null } | null>(null);
   const [zoomedPhoto, setZoomedPhoto] = useState<{ src: string; title: string; caption?: string | null } | null>(null);
@@ -390,13 +399,20 @@ export default function Home() {
 
   async function createNextIssue() {
     if (!supabase || !selectedGroup || !savedPin) return;
+    const customTopics = parseAdminTopics(adminTopics);
+
+    if (customTopics.length === 0) {
+      setStatus("Escribi al menos un tema para crear el proximo mes.");
+      return;
+    }
 
     setAdminBusy(true);
     setStatus("");
 
     const { data, error } = await supabase.rpc("create_next_month_issue", {
       group_slug: selectedGroup.slug,
-      pin: savedPin
+      pin: savedPin,
+      custom_topics: customTopics
     });
 
     if (error) {
@@ -410,7 +426,7 @@ export default function Home() {
       setSelectedIssueId(createdIssue.issue_id);
       await loadJournal(createdIssue.issue_id);
       setSection("cover");
-      setStatus(`${createdIssue.issue_title} ya esta preparado con temas base.`);
+      setStatus(`${createdIssue.issue_title} ya esta preparado con los temas elegidos.`);
     }
 
     setAdminBusy(false);
@@ -419,7 +435,7 @@ export default function Home() {
   const currentContributions = useMemo(() => {
     if (!currentTopic) return [];
 
-    return families.map((family) => ({
+    return shuffleBySeed(families, currentTopic.id).map((family) => ({
       family,
       contribution: contributionFor(currentTopic.id, family.id)
     }));
@@ -601,9 +617,7 @@ export default function Home() {
             </div>
           </aside>
           <div className={`single-canvas-collage ${families.length > 0 ? "has-content" : ""}`}>
-            {families.map((family, index) => {
-              // Buscar contribución real o dejarla como hueco
-              const contribution = currentContributions.find(c => c.family.id === family.id)?.contribution;
+            {currentContributions.map(({ family, contribution }, index) => {
               const canEdit = selectedGroup?.id === family.id;
               const key = `${currentTopic.id}-${family.id}`;
               const draft = draftFor(contribution ?? null, key);
@@ -677,8 +691,14 @@ export default function Home() {
               <p className="eyebrow">Admin</p>
               <h3>Preparar el proximo numero</h3>
               <p>
-                Crea el mes siguiente como borrador y carga cinco temas base para que la familia empiece a completar.
+                Escribi un tema por linea. Si queres sumar bajada, usá: Titulo - descripcion.
               </p>
+              <textarea
+                value={adminTopics}
+                onChange={(event) => setAdminTopics(event.target.value)}
+                rows={7}
+                placeholder="Tema 1 - Descripcion breve"
+              />
               <button className="ink-button" onClick={createNextIssue} disabled={adminBusy}>
                 {adminBusy ? "Preparando..." : "Crear proximo mes"}
               </button>
@@ -842,6 +862,35 @@ function monthNumberToName(month: number) {
   ];
 
   return months[month - 1] ?? "Próximo número";
+}
+
+function parseAdminTopics(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+    .map((line) => {
+      const separator = line.includes(" - ") ? " - " : line.includes(": ") ? ": " : null;
+      const [rawTitle, ...descriptionParts] = separator ? line.split(separator) : [line];
+      return {
+        title: rawTitle.trim().slice(0, 90),
+        description: descriptionParts.join(separator ?? "").trim().slice(0, 220) || null
+      };
+    })
+    .filter((topic) => topic.title.length > 0);
+}
+
+function shuffleBySeed<T extends { id: string }>(items: T[], seed: string) {
+  return [...items].sort((left, right) => seededScore(`${seed}-${left.id}`) - seededScore(`${seed}-${right.id}`));
+}
+
+function seededScore(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
 }
 
 function CutoutTitle({ title }: { title: string }) {
