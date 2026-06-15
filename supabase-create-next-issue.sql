@@ -42,7 +42,12 @@ begin
   into draft_issue
   from public.monthly_issues
   where status = 'draft'
-  order by year desc, issue_number desc
+  order by
+    year desc,
+    array_position(
+      array['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+      lower(month)
+    ) desc
   limit 1;
 
   if draft_issue.id is not null then
@@ -56,7 +61,12 @@ begin
   select *
   into latest_issue
   from public.monthly_issues
-  order by year desc, issue_number desc
+  order by
+    year desc,
+    array_position(
+      array['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+      lower(month)
+    ) desc
   limit 1;
 
   if latest_issue.id is null then
