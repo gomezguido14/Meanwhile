@@ -501,6 +501,9 @@ export default function Home() {
             <p className="eyebrow">{currentIssue.month} {currentIssue.year}</p>
             <h2>{currentIssue.cover_title ?? currentIssue.title}</h2>
             <p>{currentIssue.intro_text}</p>
+            <button className="ink-button" style={{ marginTop: "32px", fontSize: "1.1rem" }} onClick={() => setSection("index")}>
+              Abrir cuaderno
+            </button>
           </div>
           <img src={signedCover(currentIssue) ?? "/mt-cover.png"} alt="Portada del numero" />
         </section>
