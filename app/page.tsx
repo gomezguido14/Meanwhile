@@ -475,19 +475,19 @@ export default function Home() {
 
       <nav className="bottom-nav">
         <button className={section === "cover" || section === "index" ? "active" : ""} onClick={() => { setSection("cover"); setProfileOpen(false); }}>
-          <span className="nav-icon">🏠</span>
+          <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Inicio
         </button>
         <button className={section === "topics" ? "active" : ""} onClick={() => { setSection("topics"); setProfileOpen(false); }}>
-          <span className="nav-icon">📖</span>
+          <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
           Temas
         </button>
         <button className={section === "archive" ? "active" : ""} onClick={() => { setSection("archive"); setProfileOpen(false); }}>
-          <span className="nav-icon">📚</span>
+          <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M8 7h8"/><path d="M8 11h8"/></svg>
           Biblioteca
         </button>
         <button className={profileOpen ? "active" : ""} onClick={() => setProfileOpen((open) => !open)}>
-          <span className="nav-icon">👤</span>
+          <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Perfil
         </button>
       </nav>
