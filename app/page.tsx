@@ -93,7 +93,7 @@ export default function Home() {
   const [topicIndex, setTopicIndex] = useState(0);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [screen, setScreen] = useState<"cover" | "login" | "journal">("cover");
-  const [section, setSection] = useState<"cover" | "index" | "topics" | "archive">("topics");
+  const [section, setSection] = useState<"cover" | "index" | "topics" | "archive">("cover");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busySlot, setBusySlot] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -541,48 +541,43 @@ export default function Home() {
               <button className="paper-button" onClick={() => setTopicIndex((topicIndex + 1) % topics.length)}>Siguiente</button>
             </div>
           </aside>
-          <div className="memory-collage">
-            {currentContributions.map(({ family, contribution }, index) => {
+          <div className={`single-canvas-collage ${families.length > 0 ? "has-content" : ""}`}>
+            {families.map((family, index) => {
+              // Buscar contribución real o dejarla como hueco
+              const contribution = currentContributions.find(c => c.family.id === family.id)?.contribution;
               const canEdit = selectedGroup?.id === family.id;
               const key = `${currentTopic.id}-${family.id}`;
-              const draft = draftFor(contribution, key);
+              const draft = draftFor(contribution ?? null, key);
               const imageSrc = draft.preview ?? contribution?.signed_url ?? "";
+              
               return (
                 <article
                   key={family.id}
-                  className={`memory-card note-${draft.noteStyle} ${currentTopic.hero_group_id === family.id ? "hero" : ""} ${canEdit ? "own" : ""}`}
+                  className={`collage-slot slot-${index + 1} note-${draft.noteStyle} ${canEdit ? "own" : ""}`}
                   style={{ ["--accent" as string]: family.color ?? "#c7a35c" }}
+                  onClick={canEdit ? () => setEditingSlot({ topic: currentTopic, group: family, contribution: contribution ?? null }) : undefined}
                 >
-                  <div className="card-tape" />
-                  <div className="photo-frame">
+                  {index % 3 === 0 && <div className="card-tape" />}
+                  <div className="slot-photo-frame">
                     {imageSrc ? (
                       <button
                         type="button"
                         className="photo-zoom-button"
-                        onClick={() => setZoomedPhoto({ src: imageSrc, title: family.name, caption: contribution?.caption })}
+                        onClick={(e) => { e.stopPropagation(); setZoomedPhoto({ src: imageSrc, title: family.name, caption: contribution?.caption }); }}
                       >
                         <img src={imageSrc} alt={`Foto de ${family.name}`} />
                       </button>
                     ) : (
                       <div className="empty-photo">
-                        {canEdit ? <span>Toca "Editar" para subir tu foto</span> : <span>Este recuerdo espera una imagen</span>}
+                        <span className="empty-hint">Esperando la foto de {family.name}...</span>
+                        {canEdit && <span className="edit-hint">✏️ Tocá para agregar tu foto</span>}
                       </div>
                     )}
                   </div>
-                  <div className="slot-meta">
-                    <strong>{family.name}</strong>
-                    <span>{currentIssue?.month} {currentIssue?.year}</span>
-                  </div>
                   <div className={`caption ${contribution?.is_bold ? "bold" : ""}`}>
                     {contribution?.title ? <h3>{contribution.title}</h3> : null}
-                    {contribution?.caption ? <p>{contribution.caption}</p> : <p className="quiet">Todavía sin texto.</p>}
+                    {contribution?.caption ? <p>{contribution.caption}</p> : null}
                   </div>
-                  {canEdit && (
-                    <button className="edit-overlay-btn" onClick={() => setEditingSlot({ topic: currentTopic, group: family, contribution })}>
-                      ✏️ Editar mi página
-                    </button>
-                  )}
-                  <span className="collage-index">{index + 1}</span>
                 </article>
               );
             })}
