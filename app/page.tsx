@@ -72,6 +72,12 @@ type CreatedIssue = {
   issue_title: string;
 };
 
+type PublishedIssue = {
+  issue_id: string;
+  issue_title: string;
+  issue_status: MonthlyIssue["status"];
+};
+
 type AdminTopicInput = {
   id: string;
   title: string;
@@ -141,6 +147,7 @@ export default function Home() {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busySlot, setBusySlot] = useState<string | null>(null);
   const [adminBusy, setAdminBusy] = useState(false);
+  const [publishBusy, setPublishBusy] = useState(false);
   const [adminTopics, setAdminTopics] = useState(defaultAdminTopics);
   const [profileOpen, setProfileOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<{ topic: Topic; group: FamilyGroup; contribution: Contribution | null } | null>(null);
@@ -152,6 +159,7 @@ export default function Home() {
   const currentTopic = topics[topicIndex] ?? null;
   const canManageIssues = Boolean(selectedGroup?.can_manage_issues);
   const isEditingDraftIssue = currentIssue?.status === "draft";
+  const canEditCurrentIssue = currentIssue?.status === "draft";
   const adminActionLabel = isEditingDraftIssue ? `Guardar topics de ${currentIssue.month}` : "Crear proximo mes";
 
   useEffect(() => {
@@ -385,6 +393,11 @@ export default function Home() {
 
   async function saveSlot(topic: Topic, group: FamilyGroup, contribution: Contribution | null) {
     if (!supabase || !selectedGroup || !savedPin || !currentIssue) return;
+    if (!canEditCurrentIssue) {
+      setStatus("Este numero ya esta publicado y quedo en modo lectura.");
+      return;
+    }
+
     const key = `${topic.id}-${group.id}`;
     const draft = draftFor(contribution, key);
 
@@ -479,6 +492,31 @@ export default function Home() {
     }
 
     setAdminBusy(false);
+  }
+
+  async function publishCurrentIssue() {
+    if (!supabase || !selectedGroup || !savedPin || !currentIssue || !isEditingDraftIssue) return;
+
+    setPublishBusy(true);
+    setStatus(`Publicando ${currentIssue.title}...`);
+
+    const { data, error } = await supabase.rpc("publish_monthly_issue", {
+      group_slug: selectedGroup.slug,
+      pin: savedPin,
+      target_issue_id: currentIssue.id
+    });
+
+    if (error) {
+      setStatus(error.message);
+      setPublishBusy(false);
+      return;
+    }
+
+    const publishedIssue = (data?.[0] ?? null) as PublishedIssue | null;
+    await loadJournal(publishedIssue?.issue_id ?? currentIssue.id);
+    setSection("cover");
+    setStatus(`${publishedIssue?.issue_title ?? currentIssue.title} publicado. El numero quedo en modo lectura.`);
+    setPublishBusy(false);
   }
 
   const currentContributions = useMemo(() => {
@@ -667,7 +705,7 @@ export default function Home() {
           </aside>
           <div className={`single-canvas-collage ${families.length > 0 ? "has-content" : ""}`}>
             {currentContributions.map(({ family, contribution }, index) => {
-              const canEdit = selectedGroup?.id === family.id;
+              const canEdit = canEditCurrentIssue && selectedGroup?.id === family.id;
               const key = `${currentTopic.id}-${family.id}`;
               const draft = draftFor(contribution ?? null, key);
               const imageSrc = draft.preview ?? contribution?.signed_url ?? "";
@@ -727,7 +765,7 @@ export default function Home() {
                 }}
               >
                 <span>{issue.month} {issue.year}</span>
-                <small>Numero {String(issue.issue_number).padStart(2, "0")}</small>
+                <small>Numero {String(issue.issue_number).padStart(2, "0")} · {issueStatusLabel(issue.status)}</small>
               </button>
             ))}
             <div className="archive-issue next-issue">
@@ -782,6 +820,11 @@ export default function Home() {
               <button className="ink-button" onClick={createNextIssue} disabled={adminBusy}>
                 {adminBusy ? "Guardando..." : adminActionLabel}
               </button>
+              {isEditingDraftIssue ? (
+                <button className="paper-button" onClick={publishCurrentIssue} disabled={publishBusy || adminBusy}>
+                  {publishBusy ? "Publicando..." : `Publicar ${currentIssue.month}`}
+                </button>
+              ) : null}
             </div>
           ) : null}
           <p className="paper-note">
@@ -942,6 +985,12 @@ function monthNumberToName(month: number) {
   ];
 
   return months[month - 1] ?? "Próximo número";
+}
+
+function issueStatusLabel(status: MonthlyIssue["status"]) {
+  if (status === "draft") return "Borrador";
+  if (status === "archived") return "Archivado";
+  return "Publicado";
 }
 
 function parseAdminTopics(value: AdminTopicInput[]) {
