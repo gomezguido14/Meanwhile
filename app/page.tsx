@@ -231,7 +231,10 @@ export default function Home() {
       return;
     }
 
-    const verifiedGroup = data[0] as FamilyGroup;
+    const verifiedGroup = {
+      ...(families.find((family) => family.slug === selectedGroup.slug) ?? selectedGroup),
+      ...(data[0] as FamilyGroup)
+    };
     setSelectedGroup(verifiedGroup);
     setSavedPin(pin);
     localStorage.setItem("mt-family-slug", verifiedGroup.slug);
