@@ -1064,6 +1064,10 @@ img {
   box-shadow: 0 6px 18px rgba(41, 37, 33, 0.06);
 }
 
+.admin-topic-option.locked {
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+
 .admin-topic-number {
   color: rgba(185, 104, 79, 0.78);
   font-family: var(--hand);

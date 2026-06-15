@@ -50,10 +50,12 @@ Esta versión sí usa Supabase:
 - guarda una contribución por grupo y tema.
 - permite preparar el próximo número mensual desde la app si el grupo tiene permisos admin;
 - permite que el admin defina los temas del mes antes de crearlo;
+- permite corregir títulos y bajadas de topics sin tocar fotos ni textos;
 - permite publicar un borrador mensual y archivar los números publicados anteriores.
 
 Además del seed demo, ejecutar estas funciones en el SQL Editor cuando corresponda:
 
 - `supabase-save-family-avatar.sql`
 - `supabase-create-next-issue.sql`
+- `supabase-update-issue-topics.sql`
 - `supabase-publish-monthly-issue.sql`

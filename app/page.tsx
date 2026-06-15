@@ -78,6 +78,11 @@ type PublishedIssue = {
   issue_status: MonthlyIssue["status"];
 };
 
+type TopicUpdateResult = {
+  issue_id: string;
+  updated_count: number;
+};
+
 type AdminTopicInput = {
   id: string;
   title: string;
@@ -160,7 +165,7 @@ export default function Home() {
   const canManageIssues = Boolean(selectedGroup?.can_manage_issues);
   const isEditingDraftIssue = currentIssue?.status === "draft";
   const canEditCurrentIssue = currentIssue?.status === "draft";
-  const adminActionLabel = isEditingDraftIssue ? `Guardar topics de ${currentIssue.month}` : "Crear proximo mes";
+  const adminActionLabel = isEditingDraftIssue ? `Guardar topics de ${currentIssue.month}` : `Guardar correcciones de ${currentIssue?.month ?? "mes"}`;
 
   useEffect(() => {
     void loadJournal();
@@ -174,9 +179,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!canManageIssues || !isEditingDraftIssue || topics.length === 0) return;
+    if (!canManageIssues || topics.length === 0) return;
     setAdminTopics(topicInputsFromTopics(topics));
-  }, [canManageIssues, isEditingDraftIssue, currentIssue?.id, topics]);
+  }, [canManageIssues, currentIssue?.id, topics]);
 
   async function loadJournal(preferredIssueId = selectedIssueId) {
     setLoading(true);
@@ -455,17 +460,54 @@ export default function Home() {
     setStatus("Guardado. La pagina ya se actualizo para todos.");
   }
 
-  async function createNextIssue() {
+  async function saveAdminTopicChanges() {
     if (!supabase || !selectedGroup || !savedPin) return;
-    const customTopics = parseAdminTopics(adminTopics);
 
-    if (customTopics.length === 0) {
-      setStatus("Escribi al menos un tema para crear el proximo mes.");
+    if (isEditingDraftIssue) {
+      await saveDraftTopics();
+      return;
+    }
+
+    if (!currentIssue) return;
+    const topicUpdates = parseExistingTopicUpdates(adminTopics);
+    if (topicUpdates.length === 0) {
+      setStatus("No hay topics para corregir.");
       return;
     }
 
     setAdminBusy(true);
-    setStatus(isEditingDraftIssue ? "Guardando topics..." : "Preparando proximo mes...");
+    setStatus(`Guardando correcciones de ${currentIssue.title}...`);
+
+    const { data, error } = await supabase.rpc("update_issue_topics", {
+      group_slug: selectedGroup.slug,
+      pin: savedPin,
+      target_issue_id: currentIssue.id,
+      topic_updates: topicUpdates
+    });
+
+    if (error) {
+      setStatus(error.message);
+      setAdminBusy(false);
+      return;
+    }
+
+    const result = (data?.[0] ?? null) as TopicUpdateResult | null;
+    await loadIssueContent(currentIssue.id);
+    setStatus(`${result?.updated_count ?? topicUpdates.length} topics corregidos en ${currentIssue.title}.`);
+    setAdminBusy(false);
+  }
+
+  async function saveDraftTopics() {
+    if (!supabase || !selectedGroup || !savedPin) return;
+    const customTopics = parseAdminTopics(adminTopics);
+
+    if (customTopics.length === 0) {
+      setStatus("Escribi al menos un tema para guardar.");
+      return;
+    }
+
+    setAdminBusy(true);
+    setStatus("Guardando topics...");
 
     const { data, error } = await supabase.rpc("create_next_month_issue", {
       group_slug: selectedGroup.slug,
@@ -489,6 +531,35 @@ export default function Home() {
           ? `Topics de ${createdIssue.issue_title} guardados.`
           : `${createdIssue.issue_title} ya esta preparado con los temas elegidos.`
       );
+    }
+
+    setAdminBusy(false);
+  }
+
+  async function prepareNextIssue() {
+    if (!supabase || !selectedGroup || !savedPin) return;
+
+    setAdminBusy(true);
+    setStatus("Preparando proximo mes...");
+
+    const { data, error } = await supabase.rpc("create_next_month_issue", {
+      group_slug: selectedGroup.slug,
+      pin: savedPin,
+      custom_topics: parseAdminTopics(defaultAdminTopics)
+    });
+
+    if (error) {
+      setStatus(error.message);
+      setAdminBusy(false);
+      return;
+    }
+
+    const createdIssue = (data?.[0] ?? null) as CreatedIssue | null;
+    if (createdIssue) {
+      setSelectedIssueId(createdIssue.issue_id);
+      await loadJournal(createdIssue.issue_id);
+      setSection("archive");
+      setStatus(`${createdIssue.issue_title} ya esta listo como borrador.`);
     }
 
     setAdminBusy(false);
@@ -779,12 +850,12 @@ export default function Home() {
               <h3>Preparar el proximo numero</h3>
               <p>
                 {isEditingDraftIssue
-                  ? `Estos son los topics de ${currentIssue.title}.`
-                  : "Elegi los temas del mes. Podés dejar una bajada corta o completarla después."}
+                  ? `Estos son los topics de ${currentIssue.title}. Podés sumar o quitar mientras siga en borrador.`
+                  : `Corregí títulos o bajadas de ${currentIssue?.title ?? "este mes"} sin tocar las fotos ni los textos.`}
               </p>
               <div className="admin-topic-list">
                 {adminTopics.map((topic, index) => (
-                  <div className="admin-topic-option" key={topic.id}>
+                  <div className={isEditingDraftIssue ? "admin-topic-option" : "admin-topic-option locked"} key={topic.id}>
                     <span className="admin-topic-number">{String(index + 1).padStart(2, "0")}</span>
                     <div className="admin-topic-fields">
                       <input
@@ -802,24 +873,33 @@ export default function Home() {
                         maxLength={220}
                       />
                     </div>
-                    <button
-                      type="button"
-                      className="admin-topic-remove"
-                      onClick={() => removeAdminTopic(topic.id)}
-                      disabled={adminTopics.length <= 1}
-                      aria-label={`Quitar tema ${index + 1}`}
-                    >
-                      ×
-                    </button>
+                    {isEditingDraftIssue ? (
+                      <button
+                        type="button"
+                        className="admin-topic-remove"
+                        onClick={() => removeAdminTopic(topic.id)}
+                        disabled={adminTopics.length <= 1}
+                        aria-label={`Quitar tema ${index + 1}`}
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
                 ))}
               </div>
-              <button className="paper-button admin-add-topic" type="button" onClick={addAdminTopic} disabled={adminTopics.length >= 8}>
-                + Agregar topic
-              </button>
-              <button className="ink-button" onClick={createNextIssue} disabled={adminBusy}>
+              {isEditingDraftIssue ? (
+                <button className="paper-button admin-add-topic" type="button" onClick={addAdminTopic} disabled={adminTopics.length >= 8}>
+                  + Agregar topic
+                </button>
+              ) : null}
+              <button className="ink-button" onClick={saveAdminTopicChanges} disabled={adminBusy}>
                 {adminBusy ? "Guardando..." : adminActionLabel}
               </button>
+              {!isEditingDraftIssue ? (
+                <button className="paper-button" type="button" onClick={prepareNextIssue} disabled={adminBusy}>
+                  Preparar siguiente mes
+                </button>
+              ) : null}
               {isEditingDraftIssue ? (
                 <button className="paper-button" onClick={publishCurrentIssue} disabled={publishBusy || adminBusy}>
                   {publishBusy ? "Publicando..." : `Publicar ${currentIssue.month}`}
@@ -997,6 +1077,16 @@ function parseAdminTopics(value: AdminTopicInput[]) {
   return value
     .slice(0, 8)
     .map((topic) => ({
+      title: topic.title.trim().slice(0, 90),
+      description: topic.description.trim().slice(0, 220) || null
+    }))
+    .filter((topic) => topic.title.length > 0);
+}
+
+function parseExistingTopicUpdates(value: AdminTopicInput[]) {
+  return value
+    .map((topic) => ({
+      id: topic.id,
       title: topic.title.trim().slice(0, 90),
       description: topic.description.trim().slice(0, 220) || null
     }))
