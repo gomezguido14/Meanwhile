@@ -50,11 +50,6 @@ begin
   end if;
 
   update public.monthly_issues
-  set status = 'archived'
-  where id <> target_issue.id
-    and status = 'published';
-
-  update public.monthly_issues
   set status = 'published'
   where id = target_issue.id
   returning id, title, status into issue_id, issue_title, issue_status;

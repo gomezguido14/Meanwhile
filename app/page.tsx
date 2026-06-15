@@ -681,8 +681,8 @@ export default function Home() {
       </header>
 
       {profileOpen && selectedGroup ? (
-        <section className="profile-panel modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setProfileOpen(false); }}>
-          <div className="bottom-sheet">
+        <section className="profile-overlay" onClick={(e) => { if (e.target === e.currentTarget) setProfileOpen(false); }}>
+          <div className="profile-sheet">
             <button className="close-button" onClick={() => setProfileOpen(false)}>✕</button>
             <div className="profile-header">
               <span className="profile-chip-large">
@@ -697,11 +697,15 @@ export default function Home() {
                 <p>Tu espacio familiar en la revista.</p>
               </div>
             </div>
-            <label className="ink-button full-width text-center">
-              Cambiar foto de perfil
-              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-            </label>
-            <button className="paper-button full-width" onClick={() => setScreen("login")}>Cambiar familia</button>
+            <div className="profile-actions">
+              <label className="ink-button full-width text-center">
+                Cambiar foto de perfil
+                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              </label>
+              <button className="paper-button full-width" onClick={() => { setProfileOpen(false); setScreen("login"); }}>
+                Cambiar familia
+              </button>
+            </div>
           </div>
         </section>
       ) : null}

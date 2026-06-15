@@ -338,31 +338,6 @@ img {
   background: rgba(182, 195, 165, 0.46);
 }
 
-.profile-panel {
-  position: fixed;
-  top: 94px;
-  right: clamp(14px, 4vw, 54px);
-  z-index: 19;
-  width: min(330px, calc(100% - 28px));
-  display: grid;
-  gap: 12px;
-  padding: 18px;
-  background: rgba(255, 250, 239, 0.94);
-  border: 1px solid rgba(41, 37, 33, 0.14);
-  box-shadow: var(--shadow);
-}
-
-.profile-panel strong {
-  font-family: var(--serif);
-  font-size: 1.45rem;
-  font-weight: 500;
-}
-
-.profile-panel p {
-  margin: 4px 0 0;
-  color: var(--ink-soft);
-}
-
 .avatar-upload,
 .change-photo-pill {
   width: fit-content;
@@ -1431,14 +1406,15 @@ img {
     grid-template-columns: 1fr;
   }
 
-  .profile-panel {
-    position: fixed;
-    top: auto;
-    right: 10px;
-    left: 10px;
-    bottom: 12px;
-    width: auto;
-    z-index: 30;
+  .profile-overlay {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 14px 14px calc(116px + env(safe-area-inset-bottom));
+  }
+
+  .profile-sheet {
+    width: 100%;
+    border-radius: 14px;
   }
 
   .photo-lightbox {
@@ -1553,6 +1529,49 @@ img {
 
 .bottom-sheet .eyebrow {
   margin-bottom: 20px;
+}
+
+.profile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 92px clamp(14px, 4vw, 54px) 120px;
+  background: rgba(20, 18, 16, 0.22);
+  backdrop-filter: blur(2px);
+}
+
+.profile-sheet {
+  position: relative;
+  width: min(360px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  background: rgba(255, 250, 239, 0.96);
+  border: 1px solid rgba(41, 37, 33, 0.12);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.profile-sheet strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.profile-sheet p {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+.profile-actions {
+  display: grid;
+  gap: 10px;
 }
 
 .edit-overlay-btn {

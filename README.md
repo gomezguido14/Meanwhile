@@ -51,7 +51,7 @@ Esta versión sí usa Supabase:
 - permite preparar el próximo número mensual desde la app si el grupo tiene permisos admin;
 - permite que el admin defina los temas del mes antes de crearlo;
 - permite corregir títulos y bajadas de topics sin tocar fotos ni textos;
-- permite publicar un borrador mensual y archivar los números publicados anteriores.
+- permite publicar un borrador mensual y dejar los números anteriores visibles en el archivo.
 
 Además del seed demo, ejecutar estas funciones en el SQL Editor cuando corresponda:
 
@@ -59,3 +59,4 @@ Además del seed demo, ejecutar estas funciones en el SQL Editor cuando correspo
 - `supabase-create-next-issue.sql`
 - `supabase-update-issue-topics.sql`
 - `supabase-publish-monthly-issue.sql`
+- `supabase-restore-visible-issues.sql` si algún número anterior quedó oculto como `archived`.
