@@ -729,12 +729,20 @@ function CutoutTitle({ title }: { title: string }) {
 
 function JournalDecor() {
   return (
-    <div className="journal-decor" aria-hidden="true">
-      <span className="scrap scrap-news">recortes</span>
-      <span className="scrap scrap-grid" />
-      <span className="scrap scrap-flower">✽</span>
-      <span className="scrap scrap-line" />
-      <span className="scrap scrap-quote">pequenas historias</span>
+    <div className="journal-decor" aria-hidden="true" style={{ opacity: 1, zIndex: 5 }}>
+      {/* Hand-drawn star */}
+      <svg className="scrap doodle-star" style={{ top: "8%", right: "12%", width: "40px", height: "40px", opacity: 0.8, transform: "rotate(15deg)" }} viewBox="0 0 100 100" fill="none" stroke="#222" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M50 10 L60 40 L90 40 L65 60 L75 90 L50 70 L25 90 L35 60 L10 40 L40 40 Z" />
+      </svg>
+      {/* Hand-drawn spiral */}
+      <svg className="scrap doodle-spiral" style={{ bottom: "15%", left: "8%", width: "50px", height: "50px", opacity: 0.7, transform: "rotate(-20deg)" }} viewBox="0 0 100 100" fill="none" stroke="#111" strokeWidth="4" strokeLinecap="round">
+        <path d="M50,50 m-5,0 a5,5 0 1,0 10,0 a10,10 0 1,0 -20,0 a15,15 0 1,0 30,0 a20,20 0 1,0 -40,0 a25,25 0 1,0 50,0 a30,30 0 1,0 -60,0 a35,35 0 1,0 70,0" />
+      </svg>
+      {/* Real pressed daisy (emoji fallback with strong filter) */}
+      <div className="scrap scrapbook-flower" style={{ bottom: "5%", right: "20%", transform: "rotate(15deg)", pointerEvents: "none" }}>
+        <span style={{ fontSize: "6rem", filter: "sepia(0.8) hue-rotate(-20deg) saturate(1.5) opacity(0.85) drop-shadow(4px 8px 10px rgba(0,0,0,0.4))", userSelect: "none" }}>🌼</span>
+        <div className="card-tape" style={{ top: "45%", left: "15%", width: "80px", height: "25px", transform: "rotate(-12deg)", zIndex: 10 }}></div>
+      </div>
     </div>
   );
 }

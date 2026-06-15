@@ -28,23 +28,27 @@ html {
 }
 
 body {
-  margin: 0;
-  min-height: 100vh;
-  overflow-x: hidden;
+  background-color: #f5f2eb;
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 100% 32px;
+  background-position: 0 40px;
   color: var(--ink);
-  background: var(--paper);
   font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  position: relative;
 }
 
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
-  z-index: 20;
-  pointer-events: none;
-  opacity: 0.06;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 260 260' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
+  left: 12%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(200, 70, 70, 0.25);
+  z-index: -1;
 }
 
 button,
@@ -414,40 +418,37 @@ img {
 
 .spread {
   width: min(1220px, calc(100% - 28px));
-  margin: 20px auto 0;
+  margin: 20px auto 40px;
   min-height: 680px;
   position: relative;
-  overflow: hidden;
-  background-color: #d6b894;
+  overflow: visible; /* Changed from hidden to allow items to pop out */
+  background-color: #c4a482;
   background-image: 
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse at center, transparent 0%, rgba(100, 70, 40, 0.2) 100%);
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.25'/%3E%3C/svg%3E"),
+    linear-gradient(45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02)),
+    linear-gradient(45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02));
   background-blend-mode: multiply;
-  box-shadow: var(--shadow);
-  border: none;
-}
-
-.spread::before,
-.spread::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  z-index: 0;
+  box-shadow: 
+    10px 15px 25px rgba(0,0,0,0.25),
+    -5px 10px 20px rgba(0,0,0,0.15),
+    inset 0 0 60px rgba(100,60,20,0.15);
+  /* Ragged edge effect using complex polygon */
+  clip-path: polygon(
+    1% 1%, 4% 0%, 8% 2%, 12% 0%, 16% 1%, 20% 0%, 25% 2%, 30% 0%, 35% 1%, 40% 0%, 45% 2%, 50% 0%, 55% 1%, 60% 0%, 65% 2%, 70% 0%, 75% 1%, 80% 0%, 85% 2%, 90% 0%, 95% 1%, 98% 0%, 100% 2%,
+    99% 10%, 100% 20%, 98% 30%, 100% 40%, 99% 50%, 100% 60%, 98% 70%, 100% 80%, 99% 90%, 100% 98%,
+    98% 100%, 95% 99%, 90% 100%, 85% 98%, 80% 100%, 75% 99%, 70% 100%, 65% 98%, 60% 100%, 55% 99%, 50% 100%, 45% 98%, 40% 100%, 35% 99%, 30% 100%, 25% 98%, 20% 100%, 16% 99%, 12% 100%, 8% 98%, 4% 100%, 1% 99%,
+    0% 90%, 2% 80%, 0% 70%, 1% 60%, 0% 50%, 2% 40%, 0% 30%, 1% 20%, 0% 10%
+  );
+  padding: 40px;
 }
 
 .spread::before {
-  width: 190px;
-  height: 118px;
-  right: 8%;
-  top: 11%;
-  opacity: 0.18;
-  background:
-    linear-gradient(90deg, rgba(41, 37, 33, 0.18) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(41, 37, 33, 0.12) 1px, transparent 1px),
-    rgba(214, 188, 146, 0.64);
-  background-size: 17px 17px;
-  clip-path: polygon(0 10%, 11% 0, 100% 4%, 96% 100%, 7% 93%);
-  transform: rotate(5deg);
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border: 2px solid rgba(255,255,255,0.1);
+  pointer-events: none;
+  z-index: 10;
 }
 
 .spread::after {
@@ -572,29 +573,41 @@ img {
 }
 
 .index-spread ol {
-  margin: 0;
+  margin: 20px 0 0 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .index-spread li button {
   width: 100%;
   border: 0;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 1px 2px 5px rgba(0,0,0,0.1);
+  transform: rotate(-1deg);
   display: grid;
-  grid-template-columns: 52px 1fr;
+  grid-template-columns: 50px 1fr;
   gap: 16px;
   text-align: left;
-  padding: 12px;
-  border-bottom: 1px solid rgba(41, 37, 33, 0.10);
+  padding: 16px;
+  font-family: var(--hand);
+  font-size: 1.4rem;
+  color: #111;
+  clip-path: polygon(1% 0, 99% 2%, 100% 98%, 0 100%);
+}
+
+.index-spread li:nth-child(even) button {
+  transform: rotate(1.5deg);
+  background: rgba(240, 235, 225, 0.85);
 }
 
 .index-spread li span {
-  color: var(--terracotta);
-  font-family: var(--serif);
-  font-size: 1.35rem;
+  color: #c94f4f;
+  font-family: var(--hand);
+  font-size: 1.8rem;
+  opacity: 0.8;
 }
 
 .topic-spread {
@@ -673,36 +686,39 @@ img {
 .memory-card {
   position: relative;
   width: min(380px, 100%);
-  background-color: #fdfdfc;
-  background-image: linear-gradient(#e0dfe6 1px, transparent 1px);
-  background-size: 100% 28px;
-  background-position: 0 40px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  padding: 24px;
-  transform: rotate(var(--turn, -0.5deg));
+  background-color: #fdfdfc; /* Default polaroid */
   border-radius: 2px;
+  padding: 12px 12px 50px 12px;
+  box-shadow: 2px 8px 20px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(0,0,0,0.05);
+  transform: rotate(var(--turn, -1.5deg));
 }
 
 .memory-card:nth-child(2n) {
-  --turn: 1.5deg;
-  margin-top: 12px;
+  --turn: 2.5deg;
+  margin-top: 20px;
   background-color: #f7f6f0;
+  padding: 24px;
+  /* Lined paper override */
+  background-image: 
+    linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px);
+  background-size: 100% 28px;
+  background-position: 0 40px;
+}
+
+.memory-card:nth-child(3n) {
+  --turn: -2.8deg;
+  width: min(320px, 100%);
+  padding: 24px;
+  /* Grid paper override */
   background-image: 
     linear-gradient(#d1cfc7 1px, transparent 1px),
     linear-gradient(90deg, #d1cfc7 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-.memory-card:nth-child(3n) {
-  --turn: -1.8deg;
-  width: min(320px, 100%);
-}
-
 .memory-card:nth-child(4n) {
-  --turn: 0.8deg;
+  --turn: 1.8deg;
   margin-left: 12px;
-  background: #ffffff;
 }
 
 .memory-card.hero {
@@ -711,19 +727,24 @@ img {
 
 .card-tape {
   position: absolute;
-  top: -12px;
-  left: 30%;
-  width: 90px;
-  height: 28px;
-  background: rgba(255, 255, 255, 0.85);
-  border: none;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  transform: rotate(-3.5deg);
+  top: -15px;
+  left: 35%;
+  width: 100px;
+  height: 35px;
+  background: rgba(240, 235, 225, 0.9);
+  box-shadow: 1px 3px 6px rgba(0, 0, 0, 0.2);
+  transform: rotate(-4.5deg);
   z-index: 2;
   mix-blend-mode: normal;
-  clip-path: polygon(2% 0, 98% 2%, 100% 100%, 0 98%);
-  background-image: linear-gradient(90deg, rgba(0,0,0,0.02) 20%, transparent 20%, transparent 40%, rgba(0,0,0,0.02) 40%);
-  background-size: 4px 100%;
+  /* jagged torn edge using polygon */
+  clip-path: polygon(
+    0% 5%, 5% 0%, 10% 8%, 15% 2%, 20% 10%, 25% 0%, 30% 8%, 35% 2%, 40% 10%, 45% 0%, 50% 8%, 55% 2%, 60% 10%, 65% 0%, 70% 8%, 75% 2%, 80% 10%, 85% 0%, 90% 8%, 95% 2%, 100% 5%,
+    100% 95%, 95% 100%, 90% 92%, 85% 98%, 80% 90%, 75% 98%, 70% 92%, 65% 100%, 60% 90%, 55% 98%, 50% 92%, 45% 100%, 40% 90%, 35% 98%, 30% 92%, 25% 100%, 20% 90%, 15% 98%, 10% 92%, 5% 100%, 0% 95%
+  );
+  background-image: 
+    linear-gradient(90deg, transparent 50%, rgba(0,0,0,0.04) 50%),
+    linear-gradient(rgba(0,0,0,0.03) 50%, transparent 50%);
+  background-size: 4px 4px;
 }
 
 .photo-frame {
@@ -1309,11 +1330,17 @@ img {
   z-index: 50;
   display: flex;
   justify-content: space-around;
-  background: rgba(249, 248, 246, 0.88);
-  backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.02);
+  background-color: #4a6fa5; /* Ripped blue paper color */
+  background-image: 
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.25'/%3E%3C/svg%3E");
+  background-blend-mode: multiply;
+  border-top: none;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+  clip-path: polygon(
+    0% 8%, 5% 2%, 10% 10%, 15% 0%, 20% 8%, 25% 2%, 30% 10%, 35% 0%, 40% 8%, 45% 2%, 50% 10%, 55% 0%, 60% 8%, 65% 2%, 70% 10%, 75% 0%, 80% 8%, 85% 2%, 90% 10%, 95% 0%, 100% 8%,
+    100% 100%, 0% 100%
+  );
 }
 
 .bottom-nav button {
@@ -1323,24 +1350,25 @@ img {
   gap: 6px;
   background: transparent;
   border: none;
-  font-family: var(--sans);
-  font-size: 0.75rem;
-  color: var(--ink-soft);
+  font-family: var(--hand);
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.7);
   padding: 8px 12px;
-  border-radius: 8px;
   transition: all 0.2s;
-  letter-spacing: 0.01em;
 }
 
 .bottom-nav button.active {
-  color: var(--terracotta);
-  font-weight: 500;
+  color: #ffffff;
+  font-weight: bold;
 }
 
 .nav-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   opacity: 0.85;
+  stroke: currentColor;
+  stroke-width: 2;
+  filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
 }
 
 .bottom-nav button.active .nav-icon {
