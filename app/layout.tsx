@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "Mientras Tanto",
   description: "Revista familiar mensual hecha con pequeñas escenas de la vida cotidiana.",
   manifest: "/manifest.json",
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

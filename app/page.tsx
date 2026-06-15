@@ -151,6 +151,8 @@ export default function Home() {
   const currentIssue = issues.find((issue) => issue.id === selectedIssueId) ?? issues[0] ?? null;
   const currentTopic = topics[topicIndex] ?? null;
   const canManageIssues = Boolean(selectedGroup?.can_manage_issues);
+  const isEditingDraftIssue = currentIssue?.status === "draft";
+  const adminActionLabel = isEditingDraftIssue ? `Guardar topics de ${currentIssue.month}` : "Crear proximo mes";
 
   useEffect(() => {
     void loadJournal();
@@ -162,6 +164,11 @@ export default function Home() {
       ...current
     }));
   }, []);
+
+  useEffect(() => {
+    if (!canManageIssues || !isEditingDraftIssue || topics.length === 0) return;
+    setAdminTopics(topicInputsFromTopics(topics));
+  }, [canManageIssues, isEditingDraftIssue, currentIssue?.id, topics]);
 
   async function loadJournal(preferredIssueId = selectedIssueId) {
     setLoading(true);
@@ -445,7 +452,7 @@ export default function Home() {
     }
 
     setAdminBusy(true);
-    setStatus("");
+    setStatus(isEditingDraftIssue ? "Guardando topics..." : "Preparando proximo mes...");
 
     const { data, error } = await supabase.rpc("create_next_month_issue", {
       group_slug: selectedGroup.slug,
@@ -463,8 +470,12 @@ export default function Home() {
     if (createdIssue) {
       setSelectedIssueId(createdIssue.issue_id);
       await loadJournal(createdIssue.issue_id);
-      setSection("cover");
-      setStatus(`${createdIssue.issue_title} ya esta preparado con los temas elegidos.`);
+      setSection("index");
+      setStatus(
+        isEditingDraftIssue
+          ? `Topics de ${createdIssue.issue_title} guardados.`
+          : `${createdIssue.issue_title} ya esta preparado con los temas elegidos.`
+      );
     }
 
     setAdminBusy(false);
@@ -701,8 +712,8 @@ export default function Home() {
           <JournalDecor />
           <h2>Archivo</h2>
           <p className="archive-copy">
-            Acá elegís qué número leer. Cuando creemos Julio, Agosto y los próximos meses,
-            van a aparecer en esta mesa como revistas guardadas.
+            Acá elegís qué número leer. Los meses publicados y los borradores nuevos
+            aparecen en esta mesa como revistas guardadas.
           </p>
           <div className="archive-list">
             {issues.map((issue) => (
@@ -729,7 +740,9 @@ export default function Home() {
               <p className="eyebrow">Admin</p>
               <h3>Preparar el proximo numero</h3>
               <p>
-                Elegi los temas del mes. Podés dejar una bajada corta o completarla después.
+                {isEditingDraftIssue
+                  ? `Estos son los topics de ${currentIssue.title}.`
+                  : "Elegi los temas del mes. Podés dejar una bajada corta o completarla después."}
               </p>
               <div className="admin-topic-list">
                 {adminTopics.map((topic, index) => (
@@ -767,7 +780,7 @@ export default function Home() {
                 + Agregar topic
               </button>
               <button className="ink-button" onClick={createNextIssue} disabled={adminBusy}>
-                {adminBusy ? "Preparando..." : "Crear proximo mes"}
+                {adminBusy ? "Guardando..." : adminActionLabel}
               </button>
             </div>
           ) : null}
@@ -939,6 +952,17 @@ function parseAdminTopics(value: AdminTopicInput[]) {
       description: topic.description.trim().slice(0, 220) || null
     }))
     .filter((topic) => topic.title.length > 0);
+}
+
+function topicInputsFromTopics(items: Topic[]): AdminTopicInput[] {
+  return items
+    .slice()
+    .sort((left, right) => left.order_index - right.order_index)
+    .map((topic) => ({
+      id: topic.id,
+      title: topic.title,
+      description: topic.description ?? ""
+    }));
 }
 
 function createBlankAdminTopic(): AdminTopicInput {
