@@ -97,6 +97,7 @@ export default function Home() {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busySlot, setBusySlot] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<{ topic: Topic; group: FamilyGroup; contribution: Contribution | null } | null>(null);
   const [zoomedPhoto, setZoomedPhoto] = useState<{ src: string; title: string; caption?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
@@ -352,6 +353,7 @@ export default function Home() {
 
     await loadJournal();
     setBusySlot(null);
+    setEditingSlot(null);
     setStatus("Guardado. La pagina ya se actualizo para todos.");
   }
 
@@ -443,37 +445,51 @@ export default function Home() {
           <p className="eyebrow">Num. {String(currentIssue?.issue_number ?? 1).padStart(2, "0")} - {currentIssue?.title ?? "Junio 2026"}</p>
           <h1>Mientras <span>Tanto</span></h1>
         </div>
-        <button className="profile-chip" onClick={() => setProfileOpen((open) => !open)}>
-          <span>
-            {selectedGroupWithAvatar?.avatar_signed_url ? (
-              <img src={selectedGroupWithAvatar.avatar_signed_url} alt={selectedGroupWithAvatar.name} />
-            ) : (
-              selectedGroup ? initials(selectedGroup.name) : "MT"
-            )}
-          </span>
-          {selectedGroup?.name ?? "Perfil"}
-        </button>
       </header>
 
       {profileOpen && selectedGroup ? (
-        <section className="profile-panel">
-          <div>
-            <strong>{selectedGroup.name}</strong>
-            <p>Tu espacio familiar en la revista.</p>
+        <section className="profile-panel modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setProfileOpen(false); }}>
+          <div className="bottom-sheet">
+            <button className="close-button" onClick={() => setProfileOpen(false)}>✕</button>
+            <div className="profile-header">
+              <span className="profile-chip-large">
+                {selectedGroupWithAvatar?.avatar_signed_url ? (
+                  <img src={selectedGroupWithAvatar.avatar_signed_url} alt={selectedGroupWithAvatar.name} />
+                ) : (
+                  initials(selectedGroup.name)
+                )}
+              </span>
+              <div>
+                <strong>{selectedGroup.name}</strong>
+                <p>Tu espacio familiar en la revista.</p>
+              </div>
+            </div>
+            <label className="ink-button full-width text-center">
+              Cambiar foto de perfil
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            </label>
+            <button className="paper-button full-width" onClick={() => setScreen("login")}>Cambiar familia</button>
           </div>
-          <label className="avatar-upload">
-            Cambiar foto de login
-            <input type="file" accept="image/*" onChange={handleAvatarChange} />
-          </label>
-          <button className="paper-button" onClick={() => setScreen("login")}>Cambiar familia</button>
         </section>
       ) : null}
 
-      <nav className="journal-nav">
-        <button className={section === "cover" ? "active" : ""} onClick={() => setSection("cover")}>Portada</button>
-        <button className={section === "index" ? "active" : ""} onClick={() => setSection("index")}>Índice</button>
-        <button className={section === "topics" ? "active" : ""} onClick={() => setSection("topics")}>Temas</button>
-        <button className={section === "archive" ? "active" : ""} onClick={() => setSection("archive")}>Archivo</button>
+      <nav className="bottom-nav">
+        <button className={section === "cover" || section === "index" ? "active" : ""} onClick={() => { setSection("cover"); setProfileOpen(false); }}>
+          <span className="nav-icon">🏠</span>
+          Inicio
+        </button>
+        <button className={section === "topics" ? "active" : ""} onClick={() => { setSection("topics"); setProfileOpen(false); }}>
+          <span className="nav-icon">📖</span>
+          Temas
+        </button>
+        <button className={section === "archive" ? "active" : ""} onClick={() => { setSection("archive"); setProfileOpen(false); }}>
+          <span className="nav-icon">📚</span>
+          Biblioteca
+        </button>
+        <button className={profileOpen ? "active" : ""} onClick={() => setProfileOpen((open) => !open)}>
+          <span className="nav-icon">👤</span>
+          Perfil
+        </button>
       </nav>
 
       {status ? <div className="status-bar">{status}</div> : null}
@@ -535,81 +551,33 @@ export default function Home() {
                   style={{ ["--accent" as string]: family.color ?? "#c7a35c" }}
                 >
                   <div className="card-tape" />
-                  {canEdit && !imageSrc ? (
-                    <label className="photo-frame photo-picker">
+                  <div className="photo-frame">
+                    {imageSrc ? (
+                      <button
+                        type="button"
+                        className="photo-zoom-button"
+                        onClick={() => setZoomedPhoto({ src: imageSrc, title: family.name, caption: contribution?.caption })}
+                      >
+                        <img src={imageSrc} alt={`Foto de ${family.name}`} />
+                      </button>
+                    ) : (
                       <div className="empty-photo">
-                        <span>Tocá acá para subir tu foto</span>
+                        {canEdit ? <span>Toca "Editar" para subir tu foto</span> : <span>Este recuerdo espera una imagen</span>}
                       </div>
-                      <input type="file" accept="image/*" onChange={(event) => handleFileChange(key, event)} />
-                    </label>
-                  ) : (
-                    <div className="photo-frame">
-                      {imageSrc ? (
-                        <button
-                          type="button"
-                          className="photo-zoom-button"
-                          onClick={() => setZoomedPhoto({ src: imageSrc, title: family.name, caption: contribution?.caption })}
-                        >
-                          <img src={imageSrc} alt={`Foto de ${family.name}`} />
-                        </button>
-                      ) : (
-                        <div className="empty-photo">
-                          <span>Este recuerdo espera una imagen</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                   <div className="slot-meta">
                     <strong>{family.name}</strong>
-                    {canEdit ? <span>Tu página</span> : <span>{currentIssue?.month} {currentIssue?.year}</span>}
+                    <span>{currentIssue?.month} {currentIssue?.year}</span>
                   </div>
-                  {canEdit ? (
-                    <div className="editor-box">
-                      {imageSrc ? (
-                        <label className="change-photo-pill">
-                          Cambiar foto
-                          <input type="file" accept="image/*" onChange={(event) => handleFileChange(key, event)} />
-                        </label>
-                      ) : null}
-                      <p className="upload-hint">{draft.file ? "Foto lista. Guardala para publicarla." : imageSrc ? "Tocá la foto para verla grande, o cambiala desde acá." : "Tocá el recuadro de arriba para subir la foto."}</p>
-                      <input
-                        value={draft.title}
-                        maxLength={40}
-                        onChange={(event) => updateDraft(key, { title: event.target.value })}
-                        placeholder="Titulo corto"
-                      />
-                      <textarea
-                        value={draft.caption}
-                        maxLength={200}
-                        onChange={(event) => updateDraft(key, { caption: event.target.value })}
-                        placeholder="Texto corto, maximo 200 caracteres"
-                      />
-                      <div className="format-row">
-                        <select
-                          value={draft.noteStyle}
-                          onChange={(event) => updateDraft(key, { noteStyle: event.target.value as Draft["noteStyle"] })}
-                        >
-                          {noteStyles.map((style) => (
-                            <option key={style.value} value={style.value}>{style.label}</option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className={draft.isBold ? "bold-toggle active" : "bold-toggle"}
-                          onClick={() => updateDraft(key, { isBold: !draft.isBold })}
-                        >
-                          B
-                        </button>
-                      </div>
-                      <button className="ink-button" disabled={busySlot === key} onClick={() => saveSlot(currentTopic, family, contribution)}>
-                        {busySlot === key ? "Guardando..." : "Guardar"}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className={`caption ${contribution?.is_bold ? "bold" : ""}`}>
-                      {contribution?.title ? <h3>{contribution.title}</h3> : null}
-                      {contribution?.caption ? <p>{contribution.caption}</p> : <p className="quiet">Todavia sin texto.</p>}
-                    </div>
+                  <div className={`caption ${contribution?.is_bold ? "bold" : ""}`}>
+                    {contribution?.title ? <h3>{contribution.title}</h3> : null}
+                    {contribution?.caption ? <p>{contribution.caption}</p> : <p className="quiet">Todavía sin texto.</p>}
+                  </div>
+                  {canEdit && (
+                    <button className="edit-overlay-btn" onClick={() => setEditingSlot({ topic: currentTopic, group: family, contribution })}>
+                      ✏️ Editar mi página
+                    </button>
                   )}
                   <span className="collage-index">{index + 1}</span>
                 </article>
@@ -663,6 +631,70 @@ export default function Home() {
             </span>
           </span>
         </button>
+      ) : null}
+
+      {editingSlot ? (
+        <section className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setEditingSlot(null); }}>
+          <div className="bottom-sheet">
+            <button className="close-button" onClick={() => setEditingSlot(null)}>✕</button>
+            <h2>Editar mi página</h2>
+            <p className="eyebrow">{editingSlot.topic.title}</p>
+            <div className="editor-box">
+              {draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).preview || editingSlot.contribution?.signed_url ? (
+                <div className="edit-photo-preview">
+                  <img src={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).preview ?? editingSlot.contribution?.signed_url ?? ""} alt="Preview" />
+                  <label className="paper-button">
+                    Cambiar foto
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(`${editingSlot.topic.id}-${editingSlot.group.id}`, e)} />
+                  </label>
+                </div>
+              ) : (
+                <label className="photo-picker-large">
+                  <div className="empty-photo">
+                    <span>Tocá acá para subir tu foto</span>
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(`${editingSlot.topic.id}-${editingSlot.group.id}`, e)} />
+                </label>
+              )}
+              <input
+                value={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).title}
+                maxLength={40}
+                onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { title: event.target.value })}
+                placeholder="Título corto (opcional)"
+              />
+              <textarea
+                value={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).caption}
+                maxLength={200}
+                onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { caption: event.target.value })}
+                placeholder="Escribe un breve recuerdo..."
+              />
+              <div className="format-row">
+                <select
+                  value={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).noteStyle}
+                  onChange={(event) => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { noteStyle: event.target.value as Draft["noteStyle"] })}
+                >
+                  {noteStyles.map((style) => (
+                    <option key={style.value} value={style.value}>{style.label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className={draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).isBold ? "bold-toggle active" : "bold-toggle"}
+                  onClick={() => updateDraft(`${editingSlot.topic.id}-${editingSlot.group.id}`, { isBold: !draftFor(editingSlot.contribution, `${editingSlot.topic.id}-${editingSlot.group.id}`).isBold })}
+                >
+                  B
+                </button>
+              </div>
+              <button 
+                className="ink-button full-width" 
+                disabled={busySlot === `${editingSlot.topic.id}-${editingSlot.group.id}`} 
+                onClick={() => saveSlot(editingSlot.topic, editingSlot.group, editingSlot.contribution)}
+              >
+                {busySlot === `${editingSlot.topic.id}-${editingSlot.group.id}` ? "Guardando..." : "Guardar en la revista"}
+              </button>
+            </div>
+          </div>
+        </section>
       ) : null}
     </main>
   );

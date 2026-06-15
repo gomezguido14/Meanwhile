@@ -1,0 +1,18 @@
+{
+  "name": "Mientras Tanto",
+  "short_name": "Mientras Tanto",
+  "description": "Revista familiar mensual hecha con pequeñas escenas de la vida cotidiana.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3eadb",
+  "theme_color": "#f3eadb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
