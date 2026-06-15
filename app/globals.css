@@ -1048,16 +1048,72 @@ img {
   line-height: 1.6;
 }
 
-.admin-panel textarea {
-  width: 100%;
-  min-height: 170px;
-  resize: vertical;
-  border: 1px solid rgba(41, 37, 33, 0.16);
-  background: rgba(255, 250, 239, 0.72);
-  color: var(--ink);
+.admin-topic-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-topic-option {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 38px;
+  gap: 10px;
+  align-items: center;
   padding: 12px;
-  border-radius: 4px;
-  line-height: 1.45;
+  background: rgba(255, 250, 239, 0.78);
+  border: 1px solid rgba(41, 37, 33, 0.11);
+  box-shadow: 0 6px 18px rgba(41, 37, 33, 0.06);
+}
+
+.admin-topic-number {
+  color: rgba(185, 104, 79, 0.78);
+  font-family: var(--hand);
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.admin-topic-fields {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-topic-fields input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(41, 37, 33, 0.12);
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 0 6px;
+  color: var(--ink);
+}
+
+.admin-topic-fields input:first-child {
+  font-family: var(--hand);
+  font-size: 1.35rem;
+}
+
+.admin-topic-fields input:last-child {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.admin-topic-remove {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(41, 37, 33, 0.12);
+  background: rgba(243, 234, 219, 0.74);
+  border-radius: 50%;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.admin-topic-remove:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.admin-add-topic {
+  width: fit-content;
 }
 
 .photo-lightbox {

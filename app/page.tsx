@@ -72,15 +72,41 @@ type CreatedIssue = {
   issue_title: string;
 };
 
+type AdminTopicInput = {
+  id: string;
+  title: string;
+  description: string;
+};
+
 const draftStorageKey = "mt-drafts-v1";
 
-const defaultAdminTopics = [
-  "Una escena de este mes - Una foto simple de algo que quieras guardar de estos dias.",
-  "Algo que comimos - Una comida, cafe, merienda o mesa compartida que haya valido la pena.",
-  "Un lugar donde estuve - Una esquina, casa, camino o rincon que cuente algo del mes.",
-  "Algo que me hizo pensar en ustedes - Una imagen que te haya conectado con la familia, aunque sea por un segundo.",
-  "Pequena alegria - Una cosa minima que te alegro el dia."
-].join("\n");
+const defaultAdminTopics: AdminTopicInput[] = [
+  {
+    id: "default-topic-1",
+    title: "Una escena de este mes",
+    description: "Una foto simple de algo que quieras guardar de estos dias."
+  },
+  {
+    id: "default-topic-2",
+    title: "Algo que comimos",
+    description: "Una comida, cafe, merienda o mesa compartida que haya valido la pena."
+  },
+  {
+    id: "default-topic-3",
+    title: "Un lugar donde estuve",
+    description: "Una esquina, casa, camino o rincon que cuente algo del mes."
+  },
+  {
+    id: "default-topic-4",
+    title: "Algo que me hizo pensar en ustedes",
+    description: "Una imagen que te haya conectado con la familia, aunque sea por un segundo."
+  },
+  {
+    id: "default-topic-5",
+    title: "Pequena alegria",
+    description: "Una cosa minima que te alegro el dia."
+  }
+];
 
 const noteStyles: Array<{ value: Contribution["note_style"]; label: string }> = [
   { value: "classic", label: "Editorial" },
@@ -278,6 +304,18 @@ export default function Home() {
 
   function openEditor(topic: Topic, group: FamilyGroup, contribution: Contribution | null) {
     setEditingSlot({ topic, group, contribution });
+  }
+
+  function updateAdminTopic(id: string, patch: Partial<Omit<AdminTopicInput, "id">>) {
+    setAdminTopics((current) => current.map((topic) => (topic.id === id ? { ...topic, ...patch } : topic)));
+  }
+
+  function addAdminTopic() {
+    setAdminTopics((current) => [...current, createBlankAdminTopic()]);
+  }
+
+  function removeAdminTopic(id: string) {
+    setAdminTopics((current) => (current.length <= 1 ? current : current.filter((topic) => topic.id !== id)));
   }
 
   function updateDraft(key: string, patch: Partial<Draft>, baseDraft = emptyDraft) {
@@ -691,14 +729,43 @@ export default function Home() {
               <p className="eyebrow">Admin</p>
               <h3>Preparar el proximo numero</h3>
               <p>
-                Escribi un tema por linea. Si queres sumar bajada, usá: Titulo - descripcion.
+                Elegi los temas del mes. Podés dejar una bajada corta o completarla después.
               </p>
-              <textarea
-                value={adminTopics}
-                onChange={(event) => setAdminTopics(event.target.value)}
-                rows={7}
-                placeholder="Tema 1 - Descripcion breve"
-              />
+              <div className="admin-topic-list">
+                {adminTopics.map((topic, index) => (
+                  <div className="admin-topic-option" key={topic.id}>
+                    <span className="admin-topic-number">{String(index + 1).padStart(2, "0")}</span>
+                    <div className="admin-topic-fields">
+                      <input
+                        aria-label={`Titulo del tema ${index + 1}`}
+                        value={topic.title}
+                        onChange={(event) => updateAdminTopic(topic.id, { title: event.target.value })}
+                        placeholder="Titulo del topic"
+                        maxLength={90}
+                      />
+                      <input
+                        aria-label={`Bajada del tema ${index + 1}`}
+                        value={topic.description}
+                        onChange={(event) => updateAdminTopic(topic.id, { description: event.target.value })}
+                        placeholder="Bajada opcional"
+                        maxLength={220}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-topic-remove"
+                      onClick={() => removeAdminTopic(topic.id)}
+                      disabled={adminTopics.length <= 1}
+                      aria-label={`Quitar tema ${index + 1}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button className="paper-button admin-add-topic" type="button" onClick={addAdminTopic} disabled={adminTopics.length >= 8}>
+                + Agregar topic
+              </button>
               <button className="ink-button" onClick={createNextIssue} disabled={adminBusy}>
                 {adminBusy ? "Preparando..." : "Crear proximo mes"}
               </button>
@@ -864,21 +931,22 @@ function monthNumberToName(month: number) {
   return months[month - 1] ?? "Próximo número";
 }
 
-function parseAdminTopics(value: string) {
+function parseAdminTopics(value: AdminTopicInput[]) {
   return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
     .slice(0, 8)
-    .map((line) => {
-      const separator = line.includes(" - ") ? " - " : line.includes(": ") ? ": " : null;
-      const [rawTitle, ...descriptionParts] = separator ? line.split(separator) : [line];
-      return {
-        title: rawTitle.trim().slice(0, 90),
-        description: descriptionParts.join(separator ?? "").trim().slice(0, 220) || null
-      };
-    })
+    .map((topic) => ({
+      title: topic.title.trim().slice(0, 90),
+      description: topic.description.trim().slice(0, 220) || null
+    }))
     .filter((topic) => topic.title.length > 0);
+}
+
+function createBlankAdminTopic(): AdminTopicInput {
+  return {
+    id: `admin-topic-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: "",
+    description: ""
+  };
 }
 
 function shuffleBySeed<T extends { id: string }>(items: T[], seed: string) {
