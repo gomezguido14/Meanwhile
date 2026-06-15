@@ -55,26 +55,87 @@ begin
   if draft_issue.id is not null then
     if custom_topics is not null
       and jsonb_typeof(custom_topics) = 'array'
-      and jsonb_array_length(custom_topics) > 0
-      and not exists (
-        select 1
-        from public.contributions
+      and jsonb_array_length(custom_topics) > 0 then
+      with input_topics as (
+        select
+          position::int as position,
+          left(nullif(trim(topic->>'title'), ''), 90) as title,
+          nullif(left(trim(coalesce(topic->>'description', '')), 220), '') as description,
+          (array['hero', 'polaroid', 'notebook'])[((position::int - 1) % 3) + 1] as layout_type
+        from jsonb_array_elements(custom_topics) with ordinality as items(topic, position)
+        where nullif(trim(topic->>'title'), '') is not null
+        limit 8
+      ),
+      existing_topics as (
+        select
+          id,
+          row_number() over (order by order_index, id) as position
+        from public.topics
         where monthly_issue_id = draft_issue.id
-      ) then
-      delete from public.topics
-      where monthly_issue_id = draft_issue.id;
+      )
+      update public.topics topic
+      set
+        title = input_topics.title,
+        description = input_topics.description,
+        order_index = input_topics.position,
+        layout_type = input_topics.layout_type
+      from input_topics
+      join existing_topics on existing_topics.position = input_topics.position
+      where topic.id = existing_topics.id;
 
+      with input_topics as (
+        select
+          position::int as position,
+          left(nullif(trim(topic->>'title'), ''), 90) as title,
+          nullif(left(trim(coalesce(topic->>'description', '')), 220), '') as description,
+          (array['hero', 'polaroid', 'notebook'])[((position::int - 1) % 3) + 1] as layout_type
+        from jsonb_array_elements(custom_topics) with ordinality as items(topic, position)
+        where nullif(trim(topic->>'title'), '') is not null
+        limit 8
+      ),
+      existing_topics as (
+        select
+          id,
+          row_number() over (order by order_index, id) as position
+        from public.topics
+        where monthly_issue_id = draft_issue.id
+      )
       insert into public.topics (id, monthly_issue_id, title, description, order_index, layout_type)
       select
         gen_random_uuid(),
         draft_issue.id,
-        left(nullif(trim(topic->>'title'), ''), 90),
-        nullif(left(trim(coalesce(topic->>'description', '')), 220), ''),
-        position::int,
-        (array['hero', 'polaroid', 'notebook'])[((position::int - 1) % 3) + 1]
-      from jsonb_array_elements(custom_topics) with ordinality as items(topic, position)
-      where nullif(trim(topic->>'title'), '') is not null
-      limit 8;
+        input_topics.title,
+        input_topics.description,
+        input_topics.position,
+        input_topics.layout_type
+      from input_topics
+      where not exists (
+        select 1
+        from existing_topics
+        where existing_topics.position = input_topics.position
+      );
+
+      with input_count as (
+        select count(*)::int as topic_count
+        from jsonb_array_elements(custom_topics) as items(topic)
+        where nullif(trim(topic->>'title'), '') is not null
+      ),
+      existing_topics as (
+        select
+          id,
+          row_number() over (order by order_index, id) as position
+        from public.topics
+        where monthly_issue_id = draft_issue.id
+      )
+      delete from public.topics topic
+      using existing_topics, input_count
+      where topic.id = existing_topics.id
+        and existing_topics.position > input_count.topic_count
+        and not exists (
+          select 1
+          from public.contributions
+          where topic_id = topic.id
+        );
     end if;
 
     issue_id := draft_issue.id;
