@@ -22,6 +22,8 @@ declare
   next_date date;
   next_month_name text;
   next_issue_number int;
+  next_slug text;
+  existing_issue record;
 begin
   select id
   into admin_id
@@ -71,6 +73,21 @@ begin
 
   next_month_number := extract(month from next_date)::int;
   next_month_name := (array['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'])[next_month_number];
+  next_slug := lower(next_month_name) || '-' || extract(year from next_date)::int::text;
+
+  select id, slug, title
+  into existing_issue
+  from public.monthly_issues
+  where slug = next_slug
+  limit 1;
+
+  if existing_issue.id is not null then
+    issue_id := existing_issue.id;
+    issue_slug := existing_issue.slug;
+    issue_title := existing_issue.title;
+    return next;
+    return;
+  end if;
 
   insert into public.monthly_issues (
     id,
@@ -86,7 +103,7 @@ begin
   )
   values (
     gen_random_uuid(),
-    lower(next_month_name) || '-' || extract(year from next_date)::int::text,
+    next_slug,
     next_month_name || ' ' || extract(year from next_date)::int::text,
     next_month_name,
     extract(year from next_date)::int,
